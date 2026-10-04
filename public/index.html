@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Reef</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <section id="start" class="screen">
+    <h1>Reef</h1>
+    <p class="tag">Eat small. Grow big. Avoid bigger fish.</p>
+    <form id="start-form">
+      <label>Username <input id="username" name="username" maxlength="16" placeholder="anon" autocomplete="off"></label>
+      <fieldset id="colour-picker"><legend>Colour</legend></fieldset>
+      <button id="play" type="submit">Play</button>
+    </form>
+    <div class="panels">
+      <div><h2>Your best</h2><div id="personal-best"></div></div>
+      <div><h2>Top 10</h2><ol id="leaderboard"></ol></div>
+    </div>
+    <p><a href="/readme/">README</a></p>
+  </section>
+
+  <section id="game" class="screen" hidden>
+    <canvas id="canvas"></canvas>
+    <div id="hud"></div>
+    <div id="gameover" hidden>
+      <h2>Eaten!</h2>
+      <p id="gameover-stats"></p>
+      <button id="again" type="button">Continue</button>
+    </div>
+  </section>
+
+  <script type="module" src="/game/main.js"></script>
+</body>
+</html>
