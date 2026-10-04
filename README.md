@@ -1,9 +1,15 @@
-# Your app
+# Reef
 
-<!-- TEMPLATE: this file is yours, and the deployed app publishes it in full at
-     /readme/, where visitors and markers read it. The final project brief says
-     what it covers. Replace everything in it, this comment included. -->
+Reef is an .io-style game: you are a fish, you grow by eating pickups and smaller fish, and bigger fish eat you.
 
-Images are committed to the repo and linked relatively ---
-`![alt](docs/before.png)` --- so they render on GitHub; making them resolve at
-`/readme/` too is your app's job.
+## What "good" means this week
+
+TODO (yours to write): the bar for crit 8, in your own words.
+
+## Deliberately deferred
+
+Real-time multiplayer is deferred to crit 9, as the brief permits. Bots stand in for other players for now.
+
+## Checking the trace persists
+
+Play a run, then open the start screen again: your personal best and the global top 10 are both still there, including after the app restarts.
