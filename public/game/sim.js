@@ -3,7 +3,7 @@ export const WORLD = 2000;
 export const START_SIZE = 10;
 const FOOD_GROWTH = 1;
 const EAT_MARGIN = 1.1;
-const FOOD_COUNT = 120;
+const FOOD_COUNT = 40;
 const BASE_SPEED = 160;
 // Past this score the player can only eat other players (bots don't count).
 export const EAT_LOCK_SCORE = 3000;

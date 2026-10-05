@@ -1,10 +1,67 @@
 import { COLOURS } from "./profile.js";
 import { WORLD } from "./sim.js";
 
+// The seafloor is a cached world-sized image (water fill plus a handful of
+// large kelp patches), built once and blitted whole each frame rather than
+// redrawn, so it reads as one scene instead of scattered per-frame shapes.
+let seafloor = null;
+function buildSeafloor() {
+  const c = document.createElement("canvas");
+  c.width = WORLD;
+  c.height = WORLD;
+  const bg = c.getContext("2d");
+  bg.fillStyle = "#0a3548";
+  bg.fillRect(0, 0, WORLD, WORLD);
+  bg.lineCap = "round";
+  const sections = 10;
+  for (let s = 0; s < sections; s++) {
+    const cx = Math.random() * WORLD;
+    const cy = Math.random() * WORLD;
+    const blades = 8 + Math.floor(Math.random() * 6);
+    for (let i = 0; i < blades; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const len = 120 + Math.random() * 140;
+      const bend = angle + (Math.random() - 0.5) * 0.8;
+      const midX = cx + Math.cos(bend) * len * 0.5;
+      const midY = cy + Math.sin(bend) * len * 0.5;
+      const endX = cx + Math.cos(angle) * len;
+      const endY = cy + Math.sin(angle) * len;
+      bg.strokeStyle = `rgba(${20 + Math.random() * 20}, ${70 + Math.random() * 30}, ${55 + Math.random() * 20}, .5)`;
+      bg.lineWidth = 8 + Math.random() * 10;
+      bg.beginPath();
+      bg.moveTo(cx, cy);
+      bg.quadraticCurveTo(midX, midY, endX, endY);
+      bg.stroke();
+    }
+  }
+  seafloor = c;
+}
+
+// Tiny seaweed sprig instead of a plain dot: a few curved blades round a base,
+// in plant tones rather than the fish palette. Angles come from the food's own
+// id so each sprig looks the same from frame to frame without extra state.
+const PLANT_COLOURS = ["#2ec4b6", "#4caf50", "#3b9c6b", "#1f7a5c"];
 const drawFood = (ctx, f) => {
+  const shade = PLANT_COLOURS[f.id % PLANT_COLOURS.length];
+  const bladeLen = f.size * 1.8;
+  ctx.strokeStyle = shade;
+  ctx.lineWidth = Math.max(1, f.size * 0.4);
+  ctx.lineCap = "round";
+  for (let i = 0; i < 3; i++) {
+    const angle = ((f.id * 53 + i * 120) * Math.PI) / 180;
+    const bend = angle + 0.4;
+    const midX = f.x + Math.cos(bend) * bladeLen * 0.5;
+    const midY = f.y + Math.sin(bend) * bladeLen * 0.5;
+    const endX = f.x + Math.cos(angle) * bladeLen;
+    const endY = f.y + Math.sin(angle) * bladeLen;
+    ctx.beginPath();
+    ctx.moveTo(f.x, f.y);
+    ctx.quadraticCurveTo(midX, midY, endX, endY);
+    ctx.stroke();
+  }
   ctx.beginPath();
-  ctx.arc(f.x, f.y, f.size, 0, Math.PI * 2);
-  ctx.fillStyle = COLOURS[f.colour] ?? "#fff";
+  ctx.fillStyle = shade;
+  ctx.arc(f.x, f.y, f.size * 0.35, 0, Math.PI * 2);
   ctx.fill();
 };
 
@@ -111,6 +168,8 @@ export function render(ctx, state) {
   const p = state.player;
   ctx.save();
   ctx.translate(w / 2 - p.x, h / 2 - p.y);
+  if (!seafloor) buildSeafloor();
+  ctx.drawImage(seafloor, 0, 0);
   ctx.strokeStyle = "#3b7a8f";
   ctx.lineWidth = 4;
   ctx.strokeRect(0, 0, WORLD, WORLD);
