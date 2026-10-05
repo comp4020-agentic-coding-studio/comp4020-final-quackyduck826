@@ -33,6 +33,10 @@ function play({ username, colour }) {
   $("gameover").hidden = true;
   resize();
   const state = createState(colour, Object.keys(COLOURS));
+  $("give-up").onclick = () => {
+    state.alive = false;
+    state.gaveUp = true;
+  };
   let last = performance.now();
 
   const frame = (now) => {
@@ -54,6 +58,7 @@ function play({ username, colour }) {
 async function gameOver(state) {
   const run = { score: Math.round(state.score), size: Math.round(state.maxSize), timeSurvivedSeconds: Math.round(state.elapsed) };
   profile = recordRun(profile, run);
+  $("gameover-title").textContent = state.gaveUp ? "Gave up" : "Eaten!";
   $("gameover-stats").textContent = `Score ${run.score} · Size ${run.size} · ${run.timeSurvivedSeconds}s`;
   $("gameover").hidden = false;
   try {
