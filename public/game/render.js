@@ -21,25 +21,30 @@ function drawFish(ctx, e, outline) {
   ctx.translate(e.x, e.y);
   ctx.rotate(e.angle);
 
-  // Tail, drawn first so the body overlaps its joint.
+  // Tail, drawn first so the body overlaps its joint. The two segments
+  // overlap and share a small wag-phase lag so they read as one flexing
+  // piece rather than separate flapping parts.
   ctx.save();
   ctx.translate(tailX, 0);
-  ctx.rotate(Math.sin(e.tailWag) * 0.5);
+  ctx.rotate(Math.sin(e.tailWag) * 0.45);
   ctx.fillStyle = fill;
+  const seg1 = e.size * 0.55;
   ctx.beginPath();
-  ctx.moveTo(0, -e.size * 0.18);
-  ctx.lineTo(-e.size * 0.85, -e.size * 0.1);
-  ctx.lineTo(-e.size * 0.85, e.size * 0.1);
-  ctx.lineTo(0, e.size * 0.18);
+  ctx.moveTo(0, -e.size * 0.2);
+  ctx.lineTo(-seg1, -e.size * 0.12);
+  ctx.lineTo(-seg1, e.size * 0.12);
+  ctx.lineTo(0, e.size * 0.2);
   ctx.closePath();
   ctx.fill();
-  ctx.translate(-e.size * 0.85, 0);
-  ctx.rotate(Math.sin(e.tailWag - 1.4) * 0.7);
+  ctx.translate(-seg1 * 0.75, 0);
+  ctx.rotate(Math.sin(e.tailWag - 0.7) * 0.55);
+  const seg2 = e.size * 0.55;
   ctx.beginPath();
-  ctx.moveTo(0, -e.size * 0.1);
-  ctx.lineTo(-e.size * 0.7, -e.size * 0.45);
-  ctx.lineTo(-e.size * 0.5, 0);
-  ctx.lineTo(-e.size * 0.7, e.size * 0.45);
+  ctx.moveTo(0, -e.size * 0.12);
+  ctx.lineTo(-seg2, -e.size * 0.4);
+  ctx.lineTo(-seg2 * 0.8, 0);
+  ctx.lineTo(-seg2, e.size * 0.4);
+  ctx.lineTo(0, e.size * 0.12);
   ctx.closePath();
   ctx.fill();
   ctx.restore();
@@ -58,6 +63,19 @@ function drawFish(ctx, e, outline) {
     ctx.lineWidth = 3;
     ctx.stroke();
   }
+
+  // Small triangular side fins, swept back from the body.
+  const finX = noseCenterX - headR * 0.3;
+  const finBase = headR * 0.8;
+  ctx.fillStyle = fill;
+  [-1, 1].forEach((side) => {
+    ctx.beginPath();
+    ctx.moveTo(finX + e.size * 0.15, side * finBase);
+    ctx.lineTo(finX - e.size * 0.15, side * finBase);
+    ctx.lineTo(finX - e.size * 0.4, side * (finBase + e.size * 0.75));
+    ctx.closePath();
+    ctx.fill();
+  });
 
   // Eyes mark the head end.
   ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
