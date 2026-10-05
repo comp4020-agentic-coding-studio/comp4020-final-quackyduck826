@@ -97,7 +97,7 @@ function drawFish(ctx, e, outline) {
   const fontSize = Math.max(10, e.size * 0.5);
   ctx.font = `${fontSize}px system-ui, sans-serif`;
   ctx.textAlign = "center";
-  ctx.lineWidth = 3;
+  ctx.lineWidth = fontSize * 0.3;
   ctx.strokeStyle = "rgba(0, 0, 0, 0.6)";
   const labelY = e.y - e.size - fontSize * 0.4 - 4;
   ctx.strokeText(label, e.x, labelY);
