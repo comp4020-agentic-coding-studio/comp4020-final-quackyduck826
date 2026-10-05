@@ -12,6 +12,7 @@ const SAFE_DISTANCE = 500;
 const TURN_RATE = 8; // radians/sec an entity can turn to face its heading
 const SHRINK_SIZE = 40; // past this size the player shrinks over time
 const SHRINK_RATE = 1; // size lost per second while above SHRINK_SIZE
+const KELP_EAT_SIZE = 65; // past this size a fish has outgrown eating kelp
 
 let nextId = 1;
 const rand = (n) => Math.random() * n;
@@ -78,6 +79,7 @@ export function resolveEating(state) {
   const locked = eatingLocked(state);
   for (const e of all) {
     if (locked && e.isPlayer) continue;
+    if (e.size > KELP_EAT_SIZE) continue;
     state.food = state.food.filter((f) => {
       if (dist(e, f) < e.size) {
         e.size += FOOD_GROWTH;
