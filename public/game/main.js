@@ -3,13 +3,13 @@ import { updateBots } from "./bots.js";
 import { submitScore } from "./leaderboard.js";
 import { COLOURS, loadProfile, recordRun, saveProfile } from "./profile.js";
 import { render } from "./render.js";
-import { createState, eatingLocked, resolveEating, step, steer } from "./sim.js";
+import { createState, eatingLocked, resolveEating, step, steer, triggerDash } from "./sim.js";
 import { initStart, showBest, showLeaderboard } from "./start.js";
 
 const $ = (id) => document.getElementById(id);
 const canvas = $("canvas");
 const ctx = canvas.getContext("2d");
-const readHeading = createInput(canvas);
+const { readHeading, consumeDash } = createInput(canvas);
 let profile = loadProfile();
 
 function resize() {
@@ -44,6 +44,7 @@ function play({ username, colour }) {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     const [hx, hy] = readHeading();
+    if (consumeDash()) triggerDash(state.player);
     steer(state.player, hx, hy);
     updateBots(state, dt);
     step(state, dt);

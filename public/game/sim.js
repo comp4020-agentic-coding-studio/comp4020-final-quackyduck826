@@ -13,12 +13,25 @@ const TURN_RATE = 8; // radians/sec an entity can turn to face its heading
 const SHRINK_SIZE = 40; // past this size the player shrinks over time
 const SHRINK_RATE = 1; // size lost per second while above SHRINK_SIZE
 const KELP_EAT_SIZE = 65; // past this size a fish has outgrown eating kelp
+const DASH_BOOST = 2.2; // speed multiplier while dashing
+const DASH_DURATION = 0.18; // seconds the dash burst lasts
+const DASH_PENALTY = 0.55; // speed multiplier during the post-dash slowdown
+const DASH_PENALTY_DURATION = 2.5; // seconds of slowdown that pays for the dash
 
 let nextId = 1;
 const rand = (n) => Math.random() * n;
 
 export function makeEntity(colour, size = START_SIZE) {
-  return { id: nextId++, x: rand(WORLD), y: rand(WORLD), vx: 0, vy: 0, size, colour, angle: rand(Math.PI * 2), tailWag: rand(Math.PI * 2) };
+  return {
+    id: nextId++, x: rand(WORLD), y: rand(WORLD), vx: 0, vy: 0, size, colour,
+    angle: rand(Math.PI * 2), tailWag: rand(Math.PI * 2), dashTimer: 0, dashPenaltyTimer: 0,
+  };
+}
+
+// No-op while already dashing or still paying off the last one.
+export function triggerDash(e) {
+  if (e.dashTimer > 0 || e.dashPenaltyTimer > 0) return;
+  e.dashTimer = DASH_DURATION;
 }
 
 export function spawnFood(colourPool) {
@@ -41,7 +54,12 @@ export function createState(playerColour, botColours, botCount = 14) {
   return state;
 }
 
-const speedFor = (e) => BASE_SPEED / (1 + e.size / 60);
+const speedFor = (e) => {
+  const base = BASE_SPEED / (1 + e.size / 60);
+  if (e.dashTimer > 0) return base * DASH_BOOST;
+  if (e.dashPenaltyTimer > 0) return base * DASH_PENALTY;
+  return base;
+};
 
 // Heading is a unit vector (or zero); applies to the entity velocity.
 export function steer(e, hx, hy) {
@@ -123,6 +141,15 @@ export function step(state, dt) {
       e.angle = (((e.angle + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
     }
     e.tailWag += dt * (3 + speed * 0.03);
+    if (e.dashTimer > 0) {
+      e.dashTimer -= dt;
+      if (e.dashTimer <= 0) {
+        e.dashTimer = 0;
+        e.dashPenaltyTimer = DASH_PENALTY_DURATION;
+      }
+    } else if (e.dashPenaltyTimer > 0) {
+      e.dashPenaltyTimer = Math.max(0, e.dashPenaltyTimer - dt);
+    }
   }
   state.maxSize = Math.max(state.maxSize, state.player.size);
   if (state.player.size > SHRINK_SIZE) {
