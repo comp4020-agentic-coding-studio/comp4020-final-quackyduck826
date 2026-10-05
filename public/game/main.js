@@ -59,7 +59,9 @@ function play({ username, colour }) {
 async function gameOver(state) {
   const run = { score: Math.round(state.score), size: Math.round(state.maxSize), timeSurvivedSeconds: Math.round(state.elapsed) };
   profile = recordRun(profile, run);
-  $("gameover-title").textContent = state.gaveUp ? "Gave up" : "Eaten!";
+  const killer = state.eatenBy;
+  const killerName = killer && (killer.name ?? killer.colour.charAt(0).toUpperCase() + killer.colour.slice(1));
+  $("gameover-title").textContent = state.gaveUp ? "Gave up" : killerName ? `Eaten by ${killerName}` : "Eaten!";
   $("gameover-stats").textContent = `Score ${run.score} · Size ${run.size} · ${run.timeSurvivedSeconds}s`;
   $("gameover").hidden = false;
   try {

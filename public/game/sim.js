@@ -96,6 +96,7 @@ export function resolveEating(state) {
       if (a.size > d.size * EAT_MARGIN && dist(a, d) < a.size - d.size * 0.3 && bitingWithHead(a, d)) {
         a.size += d.size * 0.4;
         dead.add(d);
+        if (d === state.player) state.eatenBy = { name: a.name, colour: a.colour };
       }
     }
   }
