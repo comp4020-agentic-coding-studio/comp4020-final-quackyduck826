@@ -9,12 +9,13 @@ const BASE_SPEED = 160;
 export const EAT_LOCK_SCORE = 3000;
 const BIG_BOTS = 5;
 const SAFE_DISTANCE = 500;
+const TURN_RATE = 8; // radians/sec an entity can turn to face its heading
 
 let nextId = 1;
 const rand = (n) => Math.random() * n;
 
 export function makeEntity(colour, size = START_SIZE) {
-  return { id: nextId++, x: rand(WORLD), y: rand(WORLD), vx: 0, vy: 0, size, colour };
+  return { id: nextId++, x: rand(WORLD), y: rand(WORLD), vx: 0, vy: 0, size, colour, angle: rand(Math.PI * 2), tailWag: rand(Math.PI * 2) };
 }
 
 export function spawnFood(colourPool) {
@@ -61,6 +62,13 @@ export const eatingLocked = (state) => state.score >= EAT_LOCK_SCORE;
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
+// True when `prey` is in front of `attacker`'s own facing direction, i.e.
+// `attacker` is biting with its head half, not bumping prey with its tail.
+function bitingWithHead(attacker, prey) {
+  const facing = Math.cos(attacker.angle) * (prey.x - attacker.x) + Math.sin(attacker.angle) * (prey.y - attacker.y);
+  return facing > 0;
+}
+
 export function resolveEating(state) {
   const all = [state.player, ...state.bots];
   const dead = new Set();
@@ -83,7 +91,7 @@ export function resolveEating(state) {
       if (a === d || dead.has(d)) continue;
       // Locked player may only eat other players; bots aren't players.
       if (locked && a.isPlayer && !d.isPlayer) continue;
-      if (a.size > d.size * EAT_MARGIN && dist(a, d) < a.size - d.size * 0.3) {
+      if (a.size > d.size * EAT_MARGIN && dist(a, d) < a.size - d.size * 0.3 && bitingWithHead(a, d)) {
         a.size += d.size * 0.4;
         dead.add(d);
       }
@@ -100,6 +108,16 @@ export function step(state, dt) {
   for (const e of [state.player, ...state.bots]) {
     e.x = clamp(e.x + e.vx * dt);
     e.y = clamp(e.y + e.vy * dt);
+    const speed = Math.hypot(e.vx, e.vy);
+    if (speed > 1) {
+      const target = Math.atan2(e.vy, e.vx);
+      let diff = (target - e.angle) % (Math.PI * 2);
+      if (diff > Math.PI) diff -= Math.PI * 2;
+      if (diff < -Math.PI) diff += Math.PI * 2;
+      e.angle += Math.max(-TURN_RATE * dt, Math.min(TURN_RATE * dt, diff));
+      e.angle = (((e.angle + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+    }
+    e.tailWag += dt * (3 + speed * 0.03);
   }
   state.maxSize = Math.max(state.maxSize, state.player.size);
   // Score integrates size over time: rewards growing and surviving.
