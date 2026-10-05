@@ -88,6 +88,17 @@ function drawFish(ctx, e, outline) {
   });
 
   ctx.restore();
+
+  // Name label, drawn unrotated (outside the fish's own transform) so it
+  // always reads upright regardless of which way the fish is facing.
+  const label = e.name ?? e.colour.charAt(0).toUpperCase() + e.colour.slice(1);
+  ctx.font = "12px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(0, 0, 0, 0.6)";
+  ctx.strokeText(label, e.x, e.y - e.size - 8);
+  ctx.fillStyle = "#e8f6fa";
+  ctx.fillText(label, e.x, e.y - e.size - 8);
 }
 
 export function render(ctx, state) {

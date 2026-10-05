@@ -33,6 +33,7 @@ function play({ username, colour }) {
   $("gameover").hidden = true;
   resize();
   const state = createState(colour, Object.keys(COLOURS));
+  state.player.name = profile.username.trim() || "anon";
   $("give-up").onclick = () => {
     state.alive = false;
     state.gaveUp = true;
