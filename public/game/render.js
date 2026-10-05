@@ -28,12 +28,13 @@ function drawFish(ctx, e, outline) {
   ctx.translate(tailX, 0);
   ctx.rotate(Math.sin(e.tailWag) * 0.45);
   ctx.fillStyle = fill;
-  const seg1 = e.size * 0.55;
+  const seg1 = e.size * 0.6;
+  const overlap1 = e.size * 0.5;
   ctx.beginPath();
-  ctx.moveTo(0, -e.size * 0.2);
+  ctx.moveTo(overlap1, -e.size * 0.2);
   ctx.lineTo(-seg1, -e.size * 0.12);
   ctx.lineTo(-seg1, e.size * 0.12);
-  ctx.lineTo(0, e.size * 0.2);
+  ctx.lineTo(overlap1, e.size * 0.2);
   ctx.closePath();
   ctx.fill();
   ctx.translate(-seg1 * 0.75, 0);
@@ -70,9 +71,9 @@ function drawFish(ctx, e, outline) {
   ctx.fillStyle = fill;
   [-1, 1].forEach((side) => {
     ctx.beginPath();
-    ctx.moveTo(finX + e.size * 0.15, side * finBase);
-    ctx.lineTo(finX - e.size * 0.15, side * finBase);
-    ctx.lineTo(finX - e.size * 0.4, side * (finBase + e.size * 0.75));
+    ctx.moveTo(finX + e.size * 0.3, side * finBase);
+    ctx.lineTo(finX - e.size * 0.3, side * finBase);
+    ctx.lineTo(finX - e.size * 0.15, side * (finBase + e.size * 0.55));
     ctx.closePath();
     ctx.fill();
   });
