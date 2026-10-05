@@ -10,6 +10,8 @@ export const EAT_LOCK_SCORE = 3000;
 const BIG_BOTS = 5;
 const SAFE_DISTANCE = 500;
 const TURN_RATE = 8; // radians/sec an entity can turn to face its heading
+const SHRINK_SIZE = 40; // past this size the player shrinks over time
+const SHRINK_RATE = 1; // size lost per second while above SHRINK_SIZE
 
 let nextId = 1;
 const rand = (n) => Math.random() * n;
@@ -120,7 +122,11 @@ export function step(state, dt) {
     e.tailWag += dt * (3 + speed * 0.03);
   }
   state.maxSize = Math.max(state.maxSize, state.player.size);
-  state.score = state.player.size;
+  if (state.player.size > SHRINK_SIZE) {
+    state.player.size = Math.max(SHRINK_SIZE, state.player.size - SHRINK_RATE * dt);
+  }
+  // Score tracks the peak size reached, so shrinking back down doesn't cost it.
+  state.score = state.maxSize;
   const due = state.respawns.filter((r) => r.at <= state.elapsed);
   state.respawns = state.respawns.filter((r) => r.at > state.elapsed);
   for (const r of due) respawnBot(state, r);
