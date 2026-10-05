@@ -11,6 +11,7 @@ export interface Entry {
   name: string;
   score: number;
   colour: string;
+  timeSurvivedSeconds: number;
   achievedAt: string;
 }
 
@@ -41,7 +42,7 @@ export type Parsed = { ok: true; entry: Omit<Entry, "achievedAt"> } | { ok: fals
 
 export function parseSubmission(body: unknown): Parsed {
   if (typeof body !== "object" || body === null) return { ok: false, error: "body must be an object" };
-  const { name, score, colour } = body as Record<string, unknown>;
+  const { name, score, colour, timeSurvivedSeconds } = body as Record<string, unknown>;
   if (typeof score !== "number" || !Number.isInteger(score) || score < 0) {
     return { ok: false, error: "score must be a non-negative integer" };
   }
@@ -49,9 +50,16 @@ export function parseSubmission(body: unknown): Parsed {
     return { ok: false, error: "colour must be one of: " + COLOURS.join(", ") };
   }
   if (name !== undefined && typeof name !== "string") return { ok: false, error: "name must be a string" };
+  let time = 0;
+  if (timeSurvivedSeconds !== undefined) {
+    if (typeof timeSurvivedSeconds !== "number" || !Number.isInteger(timeSurvivedSeconds) || timeSurvivedSeconds < 0) {
+      return { ok: false, error: "timeSurvivedSeconds must be a non-negative integer" };
+    }
+    time = timeSurvivedSeconds;
+  }
   // eslint-disable-next-line no-control-regex
   const clean = (name ?? "").replace(/[\u0000-\u001f<>&"']/g, "").trim().slice(0, MAX_NAME);
-  return { ok: true, entry: { name: clean || "anon", score, colour } };
+  return { ok: true, entry: { name: clean || "anon", score, colour, timeSurvivedSeconds: time } };
 }
 
 export function submit(entry: Omit<Entry, "achievedAt">): Promise<Entry[]> {

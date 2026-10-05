@@ -42,7 +42,7 @@ export async function showLeaderboard() {
     const entries = await getLeaderboard();
     ol.replaceChildren(...entries.map((e) => {
       const li = document.createElement("li");
-      li.textContent = `${e.name}: ${e.score}`;
+      li.textContent = `${e.name}: ${e.score} · ${e.timeSurvivedSeconds ?? 0}s`;
       li.style.color = COLOURS[e.colour] ?? "inherit";
       return li;
     }));

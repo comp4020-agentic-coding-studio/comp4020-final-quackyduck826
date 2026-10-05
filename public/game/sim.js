@@ -120,8 +120,7 @@ export function step(state, dt) {
     e.tailWag += dt * (3 + speed * 0.03);
   }
   state.maxSize = Math.max(state.maxSize, state.player.size);
-  // Score integrates size over time: rewards growing and surviving.
-  state.score += state.player.size * dt;
+  state.score = state.player.size;
   const due = state.respawns.filter((r) => r.at <= state.elapsed);
   state.respawns = state.respawns.filter((r) => r.at > state.elapsed);
   for (const r of due) respawnBot(state, r);

@@ -44,7 +44,7 @@ function play({ username, colour }) {
     step(state, dt);
     resolveEating(state);
     render(ctx, state);
-    $("hud").textContent = `Score ${Math.round(state.score)}  Size ${Math.round(state.player.size)}  ${Math.round(state.elapsed)}s${eatingLocked(state) ? "  (eating locked: only players can be eaten)" : ""}`;
+    $("hud").textContent = `Score ${Math.round(state.score)}  ${Math.round(state.elapsed)}s${eatingLocked(state) ? "  (eating locked: only players can be eaten)" : ""}`;
     if (state.alive) return requestAnimationFrame(frame);
     gameOver(state);
   };
@@ -57,7 +57,7 @@ async function gameOver(state) {
   $("gameover-stats").textContent = `Score ${run.score} · Size ${run.size} · ${run.timeSurvivedSeconds}s`;
   $("gameover").hidden = false;
   try {
-    await submitScore({ name: profile.username, score: run.score, colour: profile.colour });
+    await submitScore({ name: profile.username, score: run.score, colour: profile.colour, timeSurvivedSeconds: run.timeSurvivedSeconds });
   } catch {
     // leaderboard is best-effort; the personal best is already saved locally
   }
