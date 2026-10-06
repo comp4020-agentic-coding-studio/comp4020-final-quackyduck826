@@ -1,20 +1,19 @@
 # Process overview
 
-<!-- TEMPLATE: replace everything in this file with your own account, this
-     comment included --- `pnpm check:evidence` fails while it's still here. -->
+I started with a plan rather than code: [`a935ac5`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-quackyduck826/commit/a935ac5) sketched the concept (an .io-style fish game, bots standing in for other players) and what "good" meant for the week before anything existed.
 
-How you got from the brief to the harness, agentic workflow and stack behind
-this app, told however suits the work. The
-[final project brief](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/assessments/final-project/#what-you-submit)
-says what it covers and how long it runs.
+From there the loop was plan → execute → check in. I built the server and client ([`8eb7c42`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-quackyduck826/commit/8eb7c42)...[`acc5a37`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-quackyduck826/commit/acc5a37)), deployed to Fly, played it, and came back with a list of what felt off.
 
-Markers follow the links you give them; they don't trawl the repo for evidence
-you didn't point at. A link to the record is one whose text is the commit hash,
-and it can sit anywhere in a sentence:
-[`a1b2c3d`](https://github.com/YOUR-ORG/YOUR-REPO/commit/a1b2c3d) for one
-commit, or
-[`a1b2c3d...e4f5a6b`](https://github.com/YOUR-ORG/YOUR-REPO/compare/a1b2c3d...e4f5a6b)
-for a range.
+Most of the work after that was small and visual, done against a live dev server so I could eyeball each change. The fish rendering alone went through several passes chasing a shape that actually reads as a fish from above — articulated tail first ([`7717fee`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-quackyduck826/commit/7717fee)), then merging the tail segments into one piece ([`df3ffa6`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-quackyduck826/commit/df3ffa6)), then widening the fins ([`1a4c6db`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-quackyduck826/commit/1a4c6db)). Screenshots of a few of those in-between stages are below.
 
-`pnpm check:evidence` checks that this comment is gone and that every commit you
-link exists in this repo. Whether the account is any good is the marker's call.
+I treated bugs and polish as separate passes. One bug: bots jittered left-right when choosing between two threats to flee from, traced to the AI recomputing the nearest target every frame with no memory, fixed with sticky target selection and a turn-rate cap ([`7524d8f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-quackyduck826/commit/7524d8f)...[`8591feb`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-quackyduck826/commit/8591feb)). Polish came from brainstorming what would make the game feel finished: a live leaderboard, fish-pun bot names, a dash cooldown bar, the pond.io rebrand ([`a6402af`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-quackyduck826/commit/a6402af)...[`0a2c848`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-quackyduck826/commit/0a2c848)).
+
+At each milestone I redeployed to Fly and specifically checked the leaderboard still persisted across the redeploy, since that's the one thing a bad deploy could quietly wipe.
+
+Fish rendering through those stages — 3 was reverted back to 2's approach before continuing on to 4 and 5:
+
+![Fish rendering, stage 1](images/fish1.png)
+![Fish rendering, stage 2](images/fish2.png)
+![Fish rendering, stage 3 — reverted back to stage 2's approach](images/fish3.png)
+![Fish rendering, stage 4](images/fish4.png)
+![Fish rendering, stage 5](images/fish5.png)
