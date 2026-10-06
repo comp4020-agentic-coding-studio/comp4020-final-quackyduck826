@@ -3,12 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Reef</title>
+  <title>pond.io</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
   <section id="start" class="screen">
-    <h1>Reef</h1>
+    <canvas id="puddle-bg"></canvas>
+    <h1>pond.io</h1>
     <p class="tag">Eat small. Grow big. Avoid bigger fish.</p>
     <form id="start-form">
       <label>Username <input id="username" name="username" maxlength="16" placeholder="anon" autocomplete="off"></label>
@@ -17,7 +21,7 @@
     </form>
     <div class="panels">
       <div><h2>Your best</h2><div id="personal-best"></div></div>
-      <div><h2>Top 10</h2><ol id="leaderboard"></ol></div>
+      <div><h2>Top 10 players</h2><ol id="leaderboard"></ol></div>
     </div>
     <p><a href="/readme/">README</a></p>
   </section>
@@ -26,6 +30,7 @@
     <canvas id="canvas"></canvas>
     <div id="hud"></div>
     <button id="give-up" type="button" title="Give up" aria-label="Give up">✕</button>
+    <ol id="liveboard"></ol>
     <div id="gameover" hidden>
       <h2 id="gameover-title">Eaten!</h2>
       <p id="gameover-stats"></p>

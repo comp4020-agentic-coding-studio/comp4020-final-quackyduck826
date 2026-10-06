@@ -14,7 +14,7 @@ const SHRINK_SIZE = 40; // past this size the player shrinks over time
 const SHRINK_RATE = 1; // size lost per second while above SHRINK_SIZE
 const KELP_EAT_SIZE = 65; // past this size a fish has outgrown eating kelp
 const DASH_BOOST = 2.2; // speed multiplier while dashing
-const DASH_DURATION = 0.18; // seconds the dash burst lasts
+const DASH_DURATION = 0.3; // seconds the dash burst lasts
 const DASH_PENALTY = 0.55; // speed multiplier during the post-dash slowdown
 const DASH_PENALTY_DURATION = 2.5; // seconds of slowdown that pays for the dash
 

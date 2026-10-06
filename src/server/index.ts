@@ -63,4 +63,4 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, "0.0.0.0", () => console.log(`reef listening on :${PORT}`));
+server.listen(PORT, "0.0.0.0", () => console.log(`pond.io listening on :${PORT}`));

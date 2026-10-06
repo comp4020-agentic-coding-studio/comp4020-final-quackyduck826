@@ -9,6 +9,6 @@ export async function serveReadme(res: ServerResponse, root: string): Promise<vo
     res,
     200,
     "text/html; charset=utf-8",
-    `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reef: README</title><link rel="stylesheet" href="/style.css"></head><body class="doc"><main>${render(md)}</main></body></html>`,
+    `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>pond.io: README</title><link rel="stylesheet" href="/style.css"></head><body class="doc"><main>${render(md)}</main></body></html>`,
   );
 }

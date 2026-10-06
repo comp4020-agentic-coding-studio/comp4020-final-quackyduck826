@@ -1,16 +1,19 @@
 import { createInput } from "./input.js";
 import { updateBots } from "./bots.js";
+import { resetLiveboard, updateLiveboard } from "./liveboard.js";
 import { submitScore } from "./leaderboard.js";
 import { COLOURS, loadProfile, recordRun, saveProfile } from "./profile.js";
 import { render } from "./render.js";
 import { createState, eatingLocked, resolveEating, step, steer, triggerDash } from "./sim.js";
 import { initStart, showBest, showLeaderboard } from "./start.js";
+import { startPuddleBackground } from "./puddle-bg.js";
 
 const $ = (id) => document.getElementById(id);
 const canvas = $("canvas");
 const ctx = canvas.getContext("2d");
 const { readHeading, consumeDash } = createInput(canvas);
 let profile = loadProfile();
+let stopPuddleBg = null;
 
 function resize() {
   canvas.width = innerWidth;
@@ -23,6 +26,7 @@ function showStart() {
   $("start").hidden = false;
   showBest(profile);
   showLeaderboard();
+  if (!stopPuddleBg) stopPuddleBg = startPuddleBackground();
 }
 
 function play({ username, colour }) {
@@ -31,9 +35,12 @@ function play({ username, colour }) {
   $("start").hidden = true;
   $("game").hidden = false;
   $("gameover").hidden = true;
+  stopPuddleBg?.();
+  stopPuddleBg = null;
   resize();
   const state = createState(colour, Object.keys(COLOURS));
   state.player.name = profile.username.trim() || "anon";
+  resetLiveboard();
   $("give-up").onclick = () => {
     state.alive = false;
     state.gaveUp = true;
@@ -49,6 +56,7 @@ function play({ username, colour }) {
     updateBots(state, dt);
     step(state, dt);
     resolveEating(state);
+    updateLiveboard(state, dt);
     render(ctx, state);
     $("hud").textContent = `Score ${Math.round(state.score)}  ${Math.round(state.elapsed)}s${eatingLocked(state) ? "  (eating locked: only players can be eaten)" : ""}`;
     if (state.alive) return requestAnimationFrame(frame);

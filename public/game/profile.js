@@ -1,4 +1,4 @@
-const KEY = "reef-profile";
+const KEY = "pond-profile";
 export const COLOURS = {
   coral: "#ff7f6b", amber: "#ffb347", lime: "#a6e22e", teal: "#2ec4b6",
   sky: "#4cc9f0", violet: "#a78bfa", pink: "#f472b6", slate: "#94a3b8",

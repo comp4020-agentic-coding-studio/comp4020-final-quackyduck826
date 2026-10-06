@@ -1,6 +1,6 @@
-# Reef
+# pond.io
 
-Reef is an .io-style game: you are a fish, you grow by eating pickups and smaller fish, and bigger fish eat you.
+pond.io is an .io-style game: you are a fish, you grow by eating pickups and smaller fish, and bigger fish eat you.
 
 ## What "good" means this week
 
