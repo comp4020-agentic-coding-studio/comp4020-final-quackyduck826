@@ -3,8 +3,10 @@ import { WORLD } from "./sim.js";
 
 // The seafloor canvas is bigger than the playable WORLD square: this margin
 // is shoreline, a rocky bank the camera can see past the clamp boundary
-// without the water itself extending there.
-const BORDER_MARGIN = 260;
+// without the water itself extending there. Needs to be generous — on a wide
+// viewport, the camera at a world corner can see well past a thin margin,
+// into the plain canvas background beyond the cached image.
+const BORDER_MARGIN = 480;
 const ROCK_PALETTE = ["#4a463f", "#5c5750", "#3a362f", "#6b6258", "#423e37"];
 
 // An irregular closed polygon around (cx, cy) instead of a circle, so rocks
@@ -46,19 +48,28 @@ function drawEdge(ctx, axis, fixed, start, length, density, [minSize, maxSize], 
   }
 }
 
+// A small cluster rather than one rock, so the corner reads as a joined-up
+// pile instead of a single blob with the two edges' scatters trailing off
+// into bare margin on either side of it. `outX`/`outY` point away from the
+// water, so the cluster spreads into the margin along both adjoining edges.
+function drawCorner(ctx, cx, cy, outX, outY) {
+  rockBlob(ctx, cx, cy, 90 + Math.random() * 70, ROCK_PALETTE[0]);
+  rockBlob(ctx, cx + outX * 90, cy + outY * 40, 65 + Math.random() * 50, ROCK_PALETTE[1]);
+  rockBlob(ctx, cx + outX * 40, cy + outY * 90, 65 + Math.random() * 50, ROCK_PALETTE[2]);
+}
+
 // Each edge gets its own density/size/reach so the border is deliberately
 // asymmetric, like a real pond's banks: one side a steep pile of boulders,
 // another a gentler scatter of pebbles.
 function drawRockyBorder(ctx, margin, world) {
-  drawEdge(ctx, "x", margin, margin, world, 1.0, [22, 50], 34); // top: close, modest
-  drawEdge(ctx, "x", margin + world, margin, world, 1.25, [32, 78], 55); // bottom: heavier
-  drawEdge(ctx, "y", margin, margin, world, 0.75, [26, 140], 65); // left: sparse, a few big outliers
-  drawEdge(ctx, "y", margin + world, margin, world, 1.5, [45, 125], 85); // right: the dense, chunky bank
-  for (const [cx, cy] of [
-    [margin, margin], [margin + world, margin], [margin, margin + world], [margin + world, margin + world],
-  ]) {
-    rockBlob(ctx, cx, cy, 55 + Math.random() * 45, ROCK_PALETTE[0]);
-  }
+  drawEdge(ctx, "x", margin, margin, world, 1.0, [30, 70], 60); // top: close, modest
+  drawEdge(ctx, "x", margin + world, margin, world, 1.25, [45, 110], 100); // bottom: heavier
+  drawEdge(ctx, "y", margin, margin, world, 0.75, [36, 195], 115); // left: sparse, a few big outliers
+  drawEdge(ctx, "y", margin + world, margin, world, 1.5, [63, 175], 150); // right: the dense, chunky bank
+  drawCorner(ctx, margin, margin, -1, -1);
+  drawCorner(ctx, margin + world, margin, 1, -1);
+  drawCorner(ctx, margin, margin + world, -1, 1);
+  drawCorner(ctx, margin + world, margin + world, 1, 1);
 }
 
 // The seafloor is a cached world-sized image (rocky bank, water fill, and a
@@ -116,7 +127,7 @@ function spawnRipple() {
     y: Math.random() * WORLD,
     age: 0,
     delay: Math.random() * 3,
-    maxRadius: 40 + Math.random() * 90,
+    maxRadius: 70 + Math.random() * 170,
     colour: RIPPLE_COLOURS[Math.floor(Math.random() * RIPPLE_COLOURS.length)],
   };
 }
@@ -134,11 +145,16 @@ function drawRipples(ctx, dt) {
       continue;
     }
     const t = r.age / RIPPLE_LIFETIME;
-    ctx.beginPath();
-    ctx.strokeStyle = `rgba(${r.colour}, ${(1 - t) * 0.12})`;
-    ctx.lineWidth = 1.5;
-    ctx.arc(r.x, r.y, r.maxRadius * t, 0, Math.PI * 2);
-    ctx.stroke();
+    const radius = r.maxRadius * t;
+    const opacity = (1 - t) * 0.22;
+    // Two close rings read as one bolder band rather than a thin line.
+    [0, 6].forEach((offset) => {
+      ctx.beginPath();
+      ctx.strokeStyle = `rgba(${r.colour}, ${opacity})`;
+      ctx.lineWidth = 2.5;
+      ctx.arc(r.x, r.y, Math.max(0, radius - offset), 0, Math.PI * 2);
+      ctx.stroke();
+    });
   }
 }
 

@@ -35,22 +35,27 @@ function drawRipple(ctx, r) {
 // Oversized versions of the in-game food sprig (see render.js's drawFood):
 // the same three-curved-blades-round-a-base shape, scaled way up and rooted
 // along the bottom edge, with a slow sway so the backdrop doesn't feel static.
-const PLANT_COLOURS = ["#2ec4b6", "#4caf50", "#3b9c6b", "#1f7a5c"];
+// Coloured like the in-level kelp patches (render.js's buildSeafloor), not
+// the opaque food sprigs, so it reads as the same translucent weed.
 const SEAWEED_COUNT = 5;
+
+function kelpGreen() {
+  return `rgba(${20 + Math.random() * 20}, ${70 + Math.random() * 30}, ${55 + Math.random() * 20}, .5)`;
+}
 
 function spawnSeaweed(w, h) {
   return {
     x: Math.random() * w,
     y: h + 10 + Math.random() * 20,
-    size: 100 + Math.random() * 120,
-    colour: PLANT_COLOURS[Math.floor(Math.random() * PLANT_COLOURS.length)],
+    size: 240 + Math.random() * 220,
+    colour: kelpGreen(),
     seed: Math.random() * 100,
   };
 }
 
 function drawSeaweed(ctx, s, t) {
   ctx.strokeStyle = s.colour;
-  ctx.lineWidth = Math.max(2, s.size * 0.06);
+  ctx.lineWidth = Math.max(8, s.size * 0.045);
   ctx.lineCap = "round";
   for (let i = 0; i < 3; i++) {
     const sway = Math.sin(t * 0.5 + s.seed + i) * 0.22;
