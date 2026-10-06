@@ -4,7 +4,7 @@ import { resetLiveboard, updateLiveboard } from "./liveboard.js";
 import { submitScore } from "./leaderboard.js";
 import { COLOURS, loadProfile, recordRun, saveProfile } from "./profile.js";
 import { render } from "./render.js";
-import { createState, eatingLocked, resolveEating, step, steer, triggerDash } from "./sim.js";
+import { createState, DASH_DURATION, DASH_PENALTY_DURATION, eatingLocked, resolveEating, step, steer, triggerDash } from "./sim.js";
 import { initStart, showBest, showLeaderboard } from "./start.js";
 import { startPuddleBackground } from "./puddle-bg.js";
 
@@ -41,6 +41,10 @@ function play({ username, colour }) {
   const state = createState(colour, Object.keys(COLOURS));
   state.player.name = profile.username.trim() || "anon";
   resetLiveboard();
+  $("dash-bar").hidden = true;
+  $("dash-hint").hidden = true;
+  let dashBarShown = false;
+  const dashCooldown = DASH_DURATION + DASH_PENALTY_DURATION;
   $("give-up").onclick = () => {
     state.alive = false;
     state.gaveUp = true;
@@ -51,12 +55,29 @@ function play({ username, colour }) {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     const [hx, hy] = readHeading();
-    if (consumeDash()) triggerDash(state.player);
+    if (consumeDash()) {
+      triggerDash(state.player);
+      if (!dashBarShown) {
+        dashBarShown = true;
+        $("dash-bar").hidden = false;
+      }
+    }
     steer(state.player, hx, hy);
     updateBots(state, dt);
     step(state, dt);
     resolveEating(state);
     updateLiveboard(state, dt);
+    if (dashBarShown) {
+      const { dashTimer, dashPenaltyTimer } = state.player;
+      // dashTimer (the burst) and dashPenaltyTimer (the slowdown after) run
+      // one after the other, not together: while still bursting, the full
+      // penalty is still ahead, so remaining time-to-ready is dashTimer plus
+      // the whole penalty duration, not just whichever timer is non-zero.
+      const remaining = dashTimer > 0 ? dashTimer + DASH_PENALTY_DURATION : dashPenaltyTimer;
+      const ready = remaining <= 0;
+      $("dash-fill").style.width = `${ready ? 100 : Math.max(0, (1 - remaining / dashCooldown) * 100)}%`;
+      $("dash-hint").hidden = !ready;
+    }
     render(ctx, state);
     $("hud").textContent = `Score ${Math.round(state.score)}  ${Math.round(state.elapsed)}s${eatingLocked(state) ? "  (eating locked: only players can be eaten)" : ""}`;
     if (state.alive) return requestAnimationFrame(frame);

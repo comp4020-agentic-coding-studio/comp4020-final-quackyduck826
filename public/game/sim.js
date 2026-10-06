@@ -1,4 +1,6 @@
 // Pure simulation: no DOM, fetch or canvas. State is a plain object.
+import { randomFishName } from "./fish-names.js";
+
 export const WORLD = 2000;
 export const START_SIZE = 10;
 const FOOD_GROWTH = 1;
@@ -14,17 +16,20 @@ const SHRINK_SIZE = 40; // past this size the player shrinks over time
 const SHRINK_RATE = 1; // size lost per second while above SHRINK_SIZE
 const KELP_EAT_SIZE = 65; // past this size a fish has outgrown eating kelp
 const DASH_BOOST = 2.2; // speed multiplier while dashing
-const DASH_DURATION = 0.3; // seconds the dash burst lasts
+export const DASH_DURATION = 0.3; // seconds the dash burst lasts
 const DASH_PENALTY = 0.55; // speed multiplier during the post-dash slowdown
-const DASH_PENALTY_DURATION = 2.5; // seconds of slowdown that pays for the dash
+export const DASH_PENALTY_DURATION = 2.5; // seconds of slowdown that pays for the dash
 
 let nextId = 1;
 const rand = (n) => Math.random() * n;
 
+// `name` defaults to a random fish pun; main.js overwrites it with the
+// player's own username right after creating the player entity.
 export function makeEntity(colour, size = START_SIZE) {
   return {
     id: nextId++, x: rand(WORLD), y: rand(WORLD), vx: 0, vy: 0, size, colour,
     angle: rand(Math.PI * 2), tailWag: rand(Math.PI * 2), dashTimer: 0, dashPenaltyTimer: 0,
+    name: randomFishName(),
   };
 }
 

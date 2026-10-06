@@ -1,5 +1,7 @@
 // Live in-game leaderboard: top 5 entities (player + bots) by current size.
 // Separate from the persistent server-backed leaderboard on the start screen.
+import { COLOURS } from "./profile.js";
+
 const $ = (id) => document.getElementById(id);
 
 const UPDATE_INTERVAL = 0.25; // seconds between DOM re-renders
@@ -30,6 +32,7 @@ export function updateLiveboard(state, dt) {
   for (const e of top) {
     const li = document.createElement("li");
     li.textContent = `${displayName(e)} · ${Math.round(e.size)}`;
+    li.style.color = COLOURS[e.colour] ?? "inherit";
     if (e.isPlayer) li.classList.add("me");
     el.appendChild(li);
   }

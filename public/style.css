@@ -59,7 +59,21 @@ canvas { width: 100%; height: 100%; display: block; background: #0a3548; touch-a
 }
 #liveboard li { counter-increment: rank; white-space: nowrap; }
 #liveboard li::before { content: counter(rank) ". "; opacity: .7; }
-#liveboard li.me { color: #ffb347; font-weight: 700; }
+#liveboard li.me { font-weight: 700; }
+#dash-bar {
+  position: absolute; bottom: 1.2rem; left: 50%; transform: translateX(-50%);
+  width: 10rem; height: .6rem;
+  background: rgba(232, 246, 250, .15);
+  border: 1px solid rgba(232, 246, 250, .4);
+  border-radius: 999px;
+  overflow: hidden;
+}
+#dash-fill { height: 100%; width: 0%; background: #ffb347; transition: width .1s linear; }
+#dash-hint {
+  position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  margin-top: .35rem; font-size: .7rem; white-space: nowrap;
+  text-shadow: 0 1px 3px #000; opacity: .9;
+}
 body.doc main { max-width: 720px; margin: 0 auto; padding: 1.5rem; line-height: 1.5; }
 body.doc img { max-width: 100%; }
 body.doc pre { background: #0a3548; padding: .8rem; overflow-x: auto; }
