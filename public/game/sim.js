@@ -62,10 +62,27 @@ const speedFor = (e) => {
 };
 
 // Heading is a unit vector (or zero); applies to the entity velocity.
-export function steer(e, hx, hy) {
+// With `dt`, velocity is capped to TURN_RATE rad/s like the facing angle is in
+// `step()`, so a desired heading that swings wildly frame to frame (e.g. a
+// fleeing bot at close range, where the relative-position vector is hyper-
+// sensitive to tiny moves) turns the entity smoothly instead of snapping its
+// path instantly. Without `dt` (the player) the heading is applied as-is, for
+// instant, arcade-responsive control.
+export function steer(e, hx, hy, dt) {
   const s = speedFor(e);
-  e.vx = hx * s;
-  e.vy = hy * s;
+  if (dt == null) {
+    e.vx = hx * s;
+    e.vy = hy * s;
+    return;
+  }
+  const desired = Math.atan2(hy, hx);
+  let diff = (desired - e.angle) % (Math.PI * 2);
+  if (diff > Math.PI) diff -= Math.PI * 2;
+  if (diff < -Math.PI) diff += Math.PI * 2;
+  e.angle += Math.max(-TURN_RATE * dt, Math.min(TURN_RATE * dt, diff));
+  e.angle = (((e.angle + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+  e.vx = Math.cos(e.angle) * s;
+  e.vy = Math.sin(e.angle) * s;
 }
 
 const clamp = (v) => Math.min(WORLD, Math.max(0, v));

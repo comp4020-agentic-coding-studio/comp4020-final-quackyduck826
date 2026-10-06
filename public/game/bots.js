@@ -61,6 +61,6 @@ export function updateBots(state, dt) {
       [hx, hy] = [Math.cos(b.wander), Math.sin(b.wander)];
     }
     const len = Math.hypot(hx, hy) || 1;
-    steer(b, hx / len, hy / len);
+    steer(b, hx / len, hy / len, dt);
   }
 }
