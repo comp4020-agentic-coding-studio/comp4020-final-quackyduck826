@@ -4,7 +4,7 @@ pond.io is an .io-style game: you are a fish, you grow by eating pickups and sma
 
 ## What "good" means this week
 
-TODO (yours to write): the bar for crit 8, in your own words.
+Make a bare bones game that functions properly and is reasonably addictive
 
 ## Deliberately deferred
 
