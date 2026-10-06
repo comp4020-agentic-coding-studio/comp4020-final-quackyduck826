@@ -78,7 +78,7 @@ function play({ username, colour }) {
       $("dash-fill").style.width = `${ready ? 100 : Math.max(0, (1 - remaining / dashCooldown) * 100)}%`;
       $("dash-hint").hidden = !ready;
     }
-    render(ctx, state);
+    render(ctx, state, dt);
     $("hud").textContent = `Score ${Math.round(state.score)}  ${Math.round(state.elapsed)}s${eatingLocked(state) ? "  (eating locked: only players can be eaten)" : ""}`;
     if (state.alive) return requestAnimationFrame(frame);
     gameOver(state);

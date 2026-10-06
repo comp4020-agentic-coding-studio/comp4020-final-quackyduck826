@@ -32,6 +32,41 @@ function drawRipple(ctx, r) {
   });
 }
 
+// Oversized versions of the in-game food sprig (see render.js's drawFood):
+// the same three-curved-blades-round-a-base shape, scaled way up and rooted
+// along the bottom edge, with a slow sway so the backdrop doesn't feel static.
+const PLANT_COLOURS = ["#2ec4b6", "#4caf50", "#3b9c6b", "#1f7a5c"];
+const SEAWEED_COUNT = 5;
+
+function spawnSeaweed(w, h) {
+  return {
+    x: Math.random() * w,
+    y: h + 10 + Math.random() * 20,
+    size: 100 + Math.random() * 120,
+    colour: PLANT_COLOURS[Math.floor(Math.random() * PLANT_COLOURS.length)],
+    seed: Math.random() * 100,
+  };
+}
+
+function drawSeaweed(ctx, s, t) {
+  ctx.strokeStyle = s.colour;
+  ctx.lineWidth = Math.max(2, s.size * 0.06);
+  ctx.lineCap = "round";
+  for (let i = 0; i < 3; i++) {
+    const sway = Math.sin(t * 0.5 + s.seed + i) * 0.22;
+    const angle = -Math.PI / 2 + (i - 1) * 0.4 + sway;
+    const bend = angle + 0.3;
+    const midX = s.x + Math.cos(bend) * s.size * 0.5;
+    const midY = s.y + Math.sin(bend) * s.size * 0.5;
+    const endX = s.x + Math.cos(angle) * s.size;
+    const endY = s.y + Math.sin(angle) * s.size;
+    ctx.beginPath();
+    ctx.moveTo(s.x, s.y);
+    ctx.quadraticCurveTo(midX, midY, endX, endY);
+    ctx.stroke();
+  }
+}
+
 // Starts the animation on the #puddle-bg canvas and returns a stop function.
 // Safe to call even if the canvas isn't in the document yet (returns a no-op).
 export function startPuddleBackground(canvasId = "puddle-bg") {
@@ -39,10 +74,13 @@ export function startPuddleBackground(canvasId = "puddle-bg") {
   if (!canvas) return () => {};
   const ctx = canvas.getContext("2d");
   let running = true;
+  let seaweeds = [];
 
   function resize() {
     canvas.width = innerWidth;
     canvas.height = innerHeight;
+    // Re-rooted on resize since their position depends on the canvas size.
+    seaweeds = Array.from({ length: SEAWEED_COUNT }, () => spawnSeaweed(canvas.width, canvas.height));
   }
   resize();
   addEventListener("resize", resize);
@@ -50,14 +88,18 @@ export function startPuddleBackground(canvasId = "puddle-bg") {
   const ripples = Array.from({ length: RIPPLE_COUNT }, () => spawnRipple(canvas.width, canvas.height));
 
   let last = performance.now();
+  let elapsed = 0;
   function frame(now) {
     if (!running) return;
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
+    elapsed += dt;
     const { width: w, height: h } = canvas;
 
     ctx.fillStyle = "#06222f";
     ctx.fillRect(0, 0, w, h);
+
+    seaweeds.forEach((s) => drawSeaweed(ctx, s, elapsed));
 
     ripples.forEach((r) => {
       if (r.delay > 0) {

@@ -2,7 +2,8 @@
 body { margin: 0; background: #06222f; color: #e8f6fa; min-height: 100vh; }
 [hidden] { display: none !important; }
 .screen { max-width: 640px; margin: 0 auto; padding: 1.5rem; }
-h1, h2 { font-family: 'Orbitron', system-ui, sans-serif; }
+h1, h2 { font-family: 'Audiowide', system-ui, sans-serif; }
+#start, #start input, #start button { font-family: 'Chakra Petch', system-ui, sans-serif; }
 h1 {
   font-size: 3rem; margin: 0; letter-spacing: .06em;
   text-shadow: 0 0 12px rgba(143, 216, 238, .55), 0 0 32px rgba(59, 122, 143, .5);

@@ -1,22 +1,85 @@
 import { COLOURS } from "./profile.js";
 import { WORLD } from "./sim.js";
 
-// The seafloor is a cached world-sized image (water fill plus a handful of
-// large kelp patches), built once and blitted whole each frame rather than
-// redrawn, so it reads as one scene instead of scattered per-frame shapes.
+// The seafloor canvas is bigger than the playable WORLD square: this margin
+// is shoreline, a rocky bank the camera can see past the clamp boundary
+// without the water itself extending there.
+const BORDER_MARGIN = 260;
+const ROCK_PALETTE = ["#4a463f", "#5c5750", "#3a362f", "#6b6258", "#423e37"];
+
+// An irregular closed polygon around (cx, cy) instead of a circle, so rocks
+// read as rocks and not pebbled dots.
+function rockBlob(ctx, cx, cy, radius, colour) {
+  const points = 9 + Math.floor(Math.random() * 5);
+  ctx.beginPath();
+  for (let i = 0; i <= points; i++) {
+    const a = (i / points) * Math.PI * 2;
+    const r = radius * (0.6 + Math.random() * 0.55);
+    const x = cx + Math.cos(a) * r;
+    const y = cy + Math.sin(a) * r;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fillStyle = colour;
+  ctx.fill();
+  ctx.strokeStyle = "rgba(0, 0, 0, .35)";
+  ctx.lineWidth = Math.max(1, radius * 0.06);
+  ctx.stroke();
+}
+
+// Scatters rocks along one edge of the WORLD square. `axis` is which way the
+// edge runs ("x" for top/bottom, "y" for left/right); `fixed` is where the
+// shoreline sits on the other axis; `reach` lets rocks stray inward (into the
+// water) or outward (into the margin) from that line. Density and size range
+// are passed per edge so the four sides don't read as one repeating tile.
+function drawEdge(ctx, axis, fixed, start, length, density, [minSize, maxSize], reach) {
+  let along = start - reach;
+  const end = start + length + reach;
+  while (along < end) {
+    const size = minSize + Math.random() * (maxSize - minSize);
+    const across = fixed + (Math.random() * 2 - 1) * reach;
+    const x = axis === "x" ? along : across;
+    const y = axis === "x" ? across : along;
+    rockBlob(ctx, x, y, size, ROCK_PALETTE[Math.floor(Math.random() * ROCK_PALETTE.length)]);
+    along += (size * 0.9) / density;
+  }
+}
+
+// Each edge gets its own density/size/reach so the border is deliberately
+// asymmetric, like a real pond's banks: one side a steep pile of boulders,
+// another a gentler scatter of pebbles.
+function drawRockyBorder(ctx, margin, world) {
+  drawEdge(ctx, "x", margin, margin, world, 1.0, [22, 50], 34); // top: close, modest
+  drawEdge(ctx, "x", margin + world, margin, world, 1.25, [32, 78], 55); // bottom: heavier
+  drawEdge(ctx, "y", margin, margin, world, 0.75, [26, 140], 65); // left: sparse, a few big outliers
+  drawEdge(ctx, "y", margin + world, margin, world, 1.5, [45, 125], 85); // right: the dense, chunky bank
+  for (const [cx, cy] of [
+    [margin, margin], [margin + world, margin], [margin, margin + world], [margin + world, margin + world],
+  ]) {
+    rockBlob(ctx, cx, cy, 55 + Math.random() * 45, ROCK_PALETTE[0]);
+  }
+}
+
+// The seafloor is a cached world-sized image (rocky bank, water fill, and a
+// handful of large kelp patches), built once and blitted whole each frame
+// rather than redrawn, so it reads as one scene instead of scattered shapes.
 let seafloor = null;
 function buildSeafloor() {
+  const size = WORLD + BORDER_MARGIN * 2;
   const c = document.createElement("canvas");
-  c.width = WORLD;
-  c.height = WORLD;
+  c.width = size;
+  c.height = size;
   const bg = c.getContext("2d");
+  bg.fillStyle = "#2b2521";
+  bg.fillRect(0, 0, size, size);
   bg.fillStyle = "#0a3548";
-  bg.fillRect(0, 0, WORLD, WORLD);
+  bg.fillRect(BORDER_MARGIN, BORDER_MARGIN, WORLD, WORLD);
   bg.lineCap = "round";
   const sections = 10;
   for (let s = 0; s < sections; s++) {
-    const cx = Math.random() * WORLD;
-    const cy = Math.random() * WORLD;
+    const cx = BORDER_MARGIN + Math.random() * WORLD;
+    const cy = BORDER_MARGIN + Math.random() * WORLD;
     const blades = 8 + Math.floor(Math.random() * 6);
     for (let i = 0; i < blades; i++) {
       const angle = Math.random() * Math.PI * 2;
@@ -34,7 +97,49 @@ function buildSeafloor() {
       bg.stroke();
     }
   }
+  drawRockyBorder(bg, BORDER_MARGIN, WORLD);
   seafloor = c;
+}
+
+// Gentle rings expanding outward from randomised points across the pond,
+// fading as they grow, respawning elsewhere once done. Drawn in world space
+// (inside the same camera transform as everything else) so they pan with
+// the scene; kept subtle so they never compete with fish/food for attention.
+const RIPPLE_COUNT = 10;
+const RIPPLE_LIFETIME = 5;
+const RIPPLE_COLOURS = ["255, 255, 255", "143, 216, 238"];
+let ripples = null;
+
+function spawnRipple() {
+  return {
+    x: Math.random() * WORLD,
+    y: Math.random() * WORLD,
+    age: 0,
+    delay: Math.random() * 3,
+    maxRadius: 40 + Math.random() * 90,
+    colour: RIPPLE_COLOURS[Math.floor(Math.random() * RIPPLE_COLOURS.length)],
+  };
+}
+
+function drawRipples(ctx, dt) {
+  if (!ripples) ripples = Array.from({ length: RIPPLE_COUNT }, spawnRipple);
+  for (const r of ripples) {
+    if (r.delay > 0) {
+      r.delay -= dt;
+      continue;
+    }
+    r.age += dt;
+    if (r.age > RIPPLE_LIFETIME) {
+      Object.assign(r, spawnRipple(), { delay: Math.random() * 2 });
+      continue;
+    }
+    const t = r.age / RIPPLE_LIFETIME;
+    ctx.beginPath();
+    ctx.strokeStyle = `rgba(${r.colour}, ${(1 - t) * 0.12})`;
+    ctx.lineWidth = 1.5;
+    ctx.arc(r.x, r.y, r.maxRadius * t, 0, Math.PI * 2);
+    ctx.stroke();
+  }
 }
 
 // Tiny seaweed sprig instead of a plain dot: a few curved blades round a base,
@@ -162,17 +267,15 @@ function drawFish(ctx, e, outline) {
   ctx.fillText(label, e.x, labelY);
 }
 
-export function render(ctx, state) {
+export function render(ctx, state, dt = 1 / 60) {
   const { width: w, height: h } = ctx.canvas;
   ctx.clearRect(0, 0, w, h);
   const p = state.player;
   ctx.save();
   ctx.translate(w / 2 - p.x, h / 2 - p.y);
   if (!seafloor) buildSeafloor();
-  ctx.drawImage(seafloor, 0, 0);
-  ctx.strokeStyle = "#3b7a8f";
-  ctx.lineWidth = 4;
-  ctx.strokeRect(0, 0, WORLD, WORLD);
+  ctx.drawImage(seafloor, -BORDER_MARGIN, -BORDER_MARGIN);
+  drawRipples(ctx, dt);
   state.food.forEach((f) => drawFood(ctx, f));
   state.bots.forEach((b) => drawFish(ctx, b, false));
   drawFish(ctx, p, true);
