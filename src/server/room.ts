@@ -54,7 +54,10 @@ interface Food {
 }
 interface EatenEvent {
   type: "eaten";
+  x: number;
+  y: number;
   victim: number;
+  victimIsPlayer: boolean;
   by: { name: string; colour: string };
 }
 interface World {
@@ -165,7 +168,7 @@ function publicPlayer(p: Player) {
   return {
     id: p.id, x: p.x, y: p.y, angle: p.angle, tailWag: p.tailWag, size: p.size,
     colour: p.colour, name: p.name, score: p.score, locked: eatingLocked(p),
-    dashTimer: p.dashTimer, dashPenaltyTimer: p.dashPenaltyTimer,
+    dashTimer: p.dashTimer, dashPenaltyTimer: p.dashPenaltyTimer, isPlayer: true,
   };
 }
 

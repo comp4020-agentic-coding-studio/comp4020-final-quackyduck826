@@ -9,7 +9,7 @@ function wsUrl() {
   return `${proto}//${location.host}/ws`;
 }
 
-export function connect({ name, colour, onWelcome, onJoined, onDeath, onClose }) {
+export function connect({ name, colour, onWelcome, onJoined, onDeath, onClose, onEvents }) {
   const socket = new WebSocket(wsUrl());
   const buffer = []; // ordered snapshots, each {t, you, players, bots, food, events}
   let world = 2000;
@@ -32,6 +32,10 @@ export function connect({ name, colour, onWelcome, onJoined, onDeath, onClose })
       // Keep a little more than the render delay needs so interpolation
       // always has two snapshots to bracket; older ones are just discarded.
       while (buffer.length > 30) buffer.shift();
+      // Fired once per snapshot arrival (not per render frame, which samples
+      // the same snapshot repeatedly while waiting for the next one), so a
+      // one-off event like a bite effect plays exactly once.
+      if (msg.events?.length) onEvents?.(msg.events);
     } else if (msg.type === "death") {
       onDeath?.({ eatenBy: msg.eatenBy, score: msg.score, size: msg.size, timeSurvivedSeconds: msg.timeSurvivedSeconds });
     }
@@ -105,5 +109,5 @@ export function interpolate(sample, youId) {
   const players = interpolateList(older.players, newer.players, frac).filter((p) => p.id !== youId);
   const bots = interpolateList(older.bots, newer.bots, frac);
   const food = newer.food;
-  return { you, players, bots, food, events: newer.events };
+  return { you, players, bots, food };
 }

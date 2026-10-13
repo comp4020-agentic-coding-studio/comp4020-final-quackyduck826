@@ -144,10 +144,12 @@ function bitingWithHead(attacker, prey) {
 }
 
 // Mutates `state` in place: entities grow/die, dead players and bots are
-// removed, bot deaths are queued to respawn, food is topped back up. Any
-// player eaten is also recorded in `state.events` (an "eaten" event per
-// victim) so a caller (the room tick loop) can tell that player apart from
-// one who's still connected but just hasn't been snapshotted since dying.
+// removed, bot deaths are queued to respawn, food is topped back up. Every
+// eat-another-entity kill (bot or player, either side) is recorded in
+// `state.events` with the bite's position, so a caller (the room tick loop,
+// then the client) can play a bite effect there; `victimIsPlayer` additionally
+// lets the room tell a real death apart from one who's still connected but
+// just hasn't been snapshotted since dying.
 export function resolveEating(state) {
   const all = [...state.players, ...state.bots];
   const dead = new Set();
@@ -173,7 +175,7 @@ export function resolveEating(state) {
       if (a.size > d.size * EAT_MARGIN && dist(a, d) < a.size - d.size * 0.3 && bitingWithHead(a, d)) {
         a.size += d.size * 0.4;
         dead.add(d);
-        if (d.isPlayer) state.events.push({ type: "eaten", victim: d.id, by: { name: a.name, colour: a.colour } });
+        state.events.push({ type: "eaten", x: d.x, y: d.y, victim: d.id, victimIsPlayer: !!d.isPlayer, by: { name: a.name, colour: a.colour } });
       }
     }
   }

@@ -2,7 +2,7 @@ import { createInput } from "./input.js";
 import { resetLiveboard, updateLiveboard } from "./liveboard.js";
 import { connect, interpolate } from "./net.js";
 import { loadProfile, recordRun, saveProfile } from "./profile.js";
-import { render } from "./render.js";
+import { render, triggerBite } from "./render.js";
 import { DASH_DURATION, DASH_PENALTY_DURATION } from "./sim.js";
 import { initStart, showBest, showLeaderboard } from "./start.js";
 import { startPuddleBackground } from "./puddle-bg.js";
@@ -22,6 +22,7 @@ addEventListener("resize", resize);
 
 function showStart() {
   $("game").hidden = true;
+  $("connection-lost").hidden = true;
   $("start").hidden = false;
   showBest(profile);
   showLeaderboard();
@@ -36,6 +37,7 @@ function play({ username, colour }) {
   $("start").hidden = true;
   $("game").hidden = false;
   $("gameover").hidden = true;
+  $("connection-lost").hidden = true;
   stopPuddleBg?.();
   stopPuddleBg = null;
   resize();
@@ -54,14 +56,21 @@ function play({ username, colour }) {
     colour,
     onJoined: (id) => { youId = id; },
     onDeath: (stats) => endRun(stats),
-    onClose: () => { if (running) endRun({ gaveUp: false }); },
+    // Only an *unexpected* close (the socket dropping on its own, not after a
+    // death message or a give-up) counts as a connection loss; `running`
+    // is already false by the time either of those closes the socket.
+    onClose: () => { if (running) connectionLost(); },
+    onEvents: (events) => {
+      for (const ev of events) {
+        if (ev.type === "eaten") triggerBite(ev.x, ev.y, ev.by.colour);
+      }
+    },
   });
 
   $("give-up").onclick = () => {
     const stats = lastYou
       ? { score: Math.round(lastYou.score), size: Math.round(lastYou.size), timeSurvivedSeconds: Math.round(elapsed) }
       : {};
-    net.close();
     endRun({ ...stats, gaveUp: true });
   };
 
@@ -105,7 +114,15 @@ function play({ username, colour }) {
   function endRun(stats) {
     if (!running) return;
     running = false;
+    net.close();
     gameOver(stats);
+  }
+
+  function connectionLost() {
+    if (!running) return;
+    running = false;
+    $("game").hidden = true;
+    $("connection-lost").hidden = false;
   }
 }
 
@@ -124,5 +141,6 @@ async function gameOver({ eatenBy, gaveUp, score = 0, size = 0, timeSurvivedSeco
 }
 
 $("again").onclick = showStart;
+$("reconnect").onclick = showStart;
 initStart(profile, play);
 showStart();

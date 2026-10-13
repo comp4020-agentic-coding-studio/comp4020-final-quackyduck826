@@ -186,8 +186,50 @@ const drawFood = (ctx, f) => {
   ctx.fill();
 };
 
+// Bite pop effects: a quick expanding ring plus a few flung fragments at the
+// eaten entity's last position, so a kill reads as an event instead of an
+// entity just silently vanishing between snapshots. Kept as module state like
+// `ripples` above, fed by `triggerBite` from outside (main.js, off the
+// server's per-tick event list) rather than owned by the sim state itself,
+// since this is pure presentation with no bearing on the simulation.
+const BITE_LIFETIME = 0.4;
+let bites = [];
+
+export function triggerBite(x, y, colour) {
+  const fragments = Array.from({ length: 6 }, (_, i) => {
+    const angle = (i / 6) * Math.PI * 2 + Math.random() * 0.5;
+    return { angle, speed: 60 + Math.random() * 60 };
+  });
+  bites.push({ x, y, age: 0, colour, fragments });
+}
+
+function drawBites(ctx, dt) {
+  bites = bites.filter((b) => b.age < BITE_LIFETIME);
+  for (const b of bites) {
+    b.age += dt;
+    const t = b.age / BITE_LIFETIME;
+    const fade = 1 - t;
+    ctx.strokeStyle = `rgba(255, 255, 255, ${fade * 0.8})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, 10 + t * 40, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = COLOURS[b.colour] ?? "#fff";
+    for (const f of b.fragments) {
+      const r = f.speed * b.age;
+      ctx.globalAlpha = fade;
+      ctx.beginPath();
+      ctx.arc(b.x + Math.cos(f.angle) * r, b.y + Math.sin(f.angle) * r, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
 // Teardrop body (round head, pointed tail-base) viewed from directly above,
 // with a two-joint tail fin that wags from `tailWag`, faster when swimming faster.
+// `outline` is "you" (thick white, the camera target), "player" (thin gold
+// ring, a real rival), or falsy (a bot, no ring).
 function drawFish(ctx, e, outline) {
   const fill = COLOURS[e.colour] ?? "#fff";
   const headR = e.size;
@@ -237,9 +279,13 @@ function drawFish(ctx, e, outline) {
   ctx.closePath();
   ctx.fillStyle = fill;
   ctx.fill();
-  if (outline) {
+  if (outline === "you") {
     ctx.strokeStyle = "#fff";
     ctx.lineWidth = 3;
+    ctx.stroke();
+  } else if (outline === "player") {
+    ctx.strokeStyle = "#ffd76b";
+    ctx.lineWidth = 2;
     ctx.stroke();
   }
 
@@ -279,13 +325,13 @@ function drawFish(ctx, e, outline) {
   ctx.strokeStyle = "rgba(0, 0, 0, 0.6)";
   const labelY = e.y - e.size - fontSize * 0.4 - 4;
   ctx.strokeText(label, e.x, labelY);
-  ctx.fillStyle = "#e8f6fa";
+  ctx.fillStyle = outline === "you" || outline === "player" ? "#ffd76b" : "#e8f6fa";
   ctx.fillText(label, e.x, labelY);
 }
 
-// `you` is the camera target and the only fish drawn with an outline;
-// `others` is every other player currently in the world (drawn like bots,
-// undistinguished apart from their own name label).
+// `you` is the camera target, drawn with a thick white outline; `others` is
+// every other real player currently in the world, drawn with a thinner gold
+// ring and gold name label so a real rival reads differently from a bot.
 export function render(ctx, state, you, others, dt = 1 / 60) {
   const { width: w, height: h } = ctx.canvas;
   ctx.clearRect(0, 0, w, h);
@@ -296,7 +342,8 @@ export function render(ctx, state, you, others, dt = 1 / 60) {
   drawRipples(ctx, dt);
   state.food.forEach((f) => drawFood(ctx, f));
   state.bots.forEach((b) => drawFish(ctx, b, false));
-  others.forEach((o) => drawFish(ctx, o, false));
-  drawFish(ctx, you, true);
+  others.forEach((o) => drawFish(ctx, o, "player"));
+  drawBites(ctx, dt);
+  drawFish(ctx, you, "you");
   ctx.restore();
 }
