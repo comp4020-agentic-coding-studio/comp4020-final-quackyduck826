@@ -10,6 +10,8 @@ Most of the work after was small and visual, against a live dev server so I coul
 
 I treated bugs and polish separately. One bug: bots jittered left-right choosing between two threats to flee, traced to the AI recomputing the nearest target every frame with no memory — fixed with sticky target selection and a turn-rate cap ([`7524d8f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-quackyduck826/commit/7524d8f)...[`8591feb`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-quackyduck826/commit/8591feb)). Polish came from brainstorming what would make the game feel finished: a live leaderboard, fish-pun bot names, a dash cooldown bar, the pond.io rebrand ([`a6402af`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-quackyduck826/commit/a6402af)...[`0a2c848`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-quackyduck826/commit/0a2c848)).
 
+**Crit 9 multiplayer decision**: real-time play is server-authoritative over WebSockets, the server running the same `sim.js` tick loop and broadcasting snapshots, because the Fly setup is already one single process so there's no scaling cost to it owning the whole simulation, and it reuses the existing pure sim code almost unchanged.
+
 Fish rendering through those stages — 3 was reverted back to 2's approach before continuing on to 4 and 5:
 
 ![Fish rendering, stage 1](images/fish1.png)
