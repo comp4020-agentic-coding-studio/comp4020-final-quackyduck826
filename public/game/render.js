@@ -322,7 +322,8 @@ function drawFish(ctx, e, outline) {
   ctx.font = `${fontSize}px system-ui, sans-serif`;
   ctx.textAlign = "center";
   ctx.lineWidth = fontSize * 0.3;
-  ctx.strokeStyle = "rgba(0, 0, 0, 0.6)";
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = "#000";
   const labelY = e.y - e.size - fontSize * 0.4 - 4;
   ctx.strokeText(label, e.x, labelY);
   ctx.fillStyle = outline === "you" || outline === "player" ? "#ffd76b" : "#e8f6fa";
