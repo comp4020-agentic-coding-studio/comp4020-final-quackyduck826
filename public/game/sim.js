@@ -10,16 +10,18 @@ export const WORLD = 2000;
 export const START_SIZE = 10;
 const FOOD_GROWTH = 1;
 const EAT_MARGIN = 1.1;
-const FOOD_COUNT = 40;
+const FOOD_COUNT = 70;
 const BASE_SPEED = 160;
 // Past this score an entity can only eat other players (bots don't count).
 export const EAT_LOCK_SCORE = 3000;
-const BIG_BOTS = 5;
+const BIG_BOTS = 3;
+const BIG_BOT_MIN = 40;
+const BIG_BOT_RANGE = 30; // big bots spawn at BIG_BOT_MIN..BIG_BOT_MIN+BIG_BOT_RANGE
 const SAFE_DISTANCE = 500;
 const TURN_RATE = 8; // radians/sec an entity can turn to face its heading
 const SHRINK_SIZE = 40; // past this size a player shrinks over time
 const SHRINK_RATE = 1; // size lost per second while above SHRINK_SIZE
-const KELP_EAT_SIZE = 65; // past this size a fish has outgrown eating kelp
+const KELP_EAT_SIZE = 60; // past this size a fish has outgrown eating kelp
 const DASH_BOOST = 2.2; // speed multiplier while dashing
 export const DASH_DURATION = 0.3; // seconds the dash burst lasts
 const DASH_PENALTY = 0.55; // speed multiplier during the post-dash slowdown
@@ -55,7 +57,7 @@ export function createWorld(botColours, botCount = 14) {
   const state = { players: [], bots: [], food: [], respawns: [], events: [], elapsed: 0, palette: botColours };
   for (let i = 0; i < botCount; i++) state.bots.push(makeEntity(botColours[i % botColours.length], START_SIZE + rand(15)));
   for (let i = 0; i < BIG_BOTS; i++) {
-    const big = makeEntity(botColours[i % botColours.length], 60 + rand(50));
+    const big = makeEntity(botColours[i % botColours.length], BIG_BOT_MIN + rand(BIG_BOT_RANGE));
     big.big = true;
     state.bots.push(big);
   }
@@ -119,7 +121,7 @@ export function steer(e, hx, hy, dt) {
 const clamp = (v) => Math.min(WORLD, Math.max(0, v));
 
 export function respawnBot(state, { colour, big }) {
-  const bot = makeEntity(colour, big ? 60 + rand(50) : START_SIZE);
+  const bot = makeEntity(colour, big ? BIG_BOT_MIN + rand(BIG_BOT_RANGE) : START_SIZE);
   if (big) {
     bot.big = true;
     let tries = 0;
