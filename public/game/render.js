@@ -283,17 +283,20 @@ function drawFish(ctx, e, outline) {
   ctx.fillText(label, e.x, labelY);
 }
 
-export function render(ctx, state, dt = 1 / 60) {
+// `you` is the camera target and the only fish drawn with an outline;
+// `others` is every other player currently in the world (drawn like bots,
+// undistinguished apart from their own name label).
+export function render(ctx, state, you, others, dt = 1 / 60) {
   const { width: w, height: h } = ctx.canvas;
   ctx.clearRect(0, 0, w, h);
-  const p = state.player;
   ctx.save();
-  ctx.translate(w / 2 - p.x, h / 2 - p.y);
+  ctx.translate(w / 2 - you.x, h / 2 - you.y);
   if (!seafloor) buildSeafloor();
   ctx.drawImage(seafloor, -BORDER_MARGIN, -BORDER_MARGIN);
   drawRipples(ctx, dt);
   state.food.forEach((f) => drawFood(ctx, f));
   state.bots.forEach((b) => drawFish(ctx, b, false));
-  drawFish(ctx, p, true);
+  others.forEach((o) => drawFish(ctx, o, false));
+  drawFish(ctx, you, true);
   ctx.restore();
 }

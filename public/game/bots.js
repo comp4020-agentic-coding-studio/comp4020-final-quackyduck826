@@ -38,7 +38,7 @@ function pickSticky(b, key, all, predicate) {
 
 // Priority: flee a bigger nearby entity > chase nearest edible > wander.
 export function updateBots(state, dt) {
-  const all = [state.player, ...state.bots];
+  const all = [...state.players, ...state.bots];
   for (const b of state.bots) {
     const flee = pickSticky(b, "fleeId", all, (o) => o.size > b.size * 1.1);
     let target = null;

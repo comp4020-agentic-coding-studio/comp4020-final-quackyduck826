@@ -21,19 +21,20 @@ export function resetLiveboard() {
 }
 
 // Called every frame; only actually touches the DOM a few times a second.
-export function updateLiveboard(state, dt) {
+// `youId` marks which entity (if any, among the players) is this client's own.
+export function updateLiveboard(state, youId, dt) {
   sinceUpdate += dt;
   if (sinceUpdate < UPDATE_INTERVAL) return;
   sinceUpdate = 0;
   const el = $("liveboard");
   if (!el) return;
-  const top = [state.player, ...state.bots].sort((a, b) => b.size - a.size).slice(0, 5);
+  const top = [...state.players, ...state.bots].sort((a, b) => b.size - a.size).slice(0, 5);
   el.innerHTML = "";
   for (const e of top) {
     const li = document.createElement("li");
     li.textContent = `${displayName(e)} · ${Math.round(e.size)}`;
     li.style.color = COLOURS[e.colour] ?? "inherit";
-    if (e.isPlayer) li.classList.add("me");
+    if (e.id === youId) li.classList.add("me");
     el.appendChild(li);
   }
 }

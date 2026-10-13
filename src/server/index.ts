@@ -2,9 +2,11 @@ import { createServer } from "node:http";
 import type { IncomingMessage } from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { WebSocketServer } from "ws";
 import { PORT } from "./env.ts";
 import { parseSubmission, submit, top } from "./leaderboard.ts";
 import { serveReadme } from "./readme.ts";
+import { handleConnection, startRoom } from "./room.ts";
 import { send, serveFile } from "./static.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -63,4 +65,20 @@ const server = createServer(async (req, res) => {
   }
 });
 
+// A dedicated WebSocketServer in `noServer` mode: it never binds its own
+// socket, it only upgrades connections the http.Server hands it on `/ws`, so
+// leaderboard/static/readme routing above is untouched.
+const wss = new WebSocketServer({ noServer: true });
+wss.on("connection", handleConnection);
+
+server.on("upgrade", (req, socket, head) => {
+  const { pathname } = new URL(req.url ?? "/", "http://x");
+  if (pathname !== "/ws") {
+    socket.destroy();
+    return;
+  }
+  wss.handleUpgrade(req, socket, head, (ws) => wss.emit("connection", ws));
+});
+
+startRoom();
 server.listen(PORT, "0.0.0.0", () => console.log(`pond.io listening on :${PORT}`));

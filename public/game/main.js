@@ -1,10 +1,9 @@
 import { createInput } from "./input.js";
-import { updateBots } from "./bots.js";
 import { resetLiveboard, updateLiveboard } from "./liveboard.js";
-import { submitScore } from "./leaderboard.js";
-import { COLOURS, loadProfile, recordRun, saveProfile } from "./profile.js";
+import { connect, interpolate } from "./net.js";
+import { loadProfile, recordRun, saveProfile } from "./profile.js";
 import { render } from "./render.js";
-import { createState, DASH_DURATION, DASH_PENALTY_DURATION, eatingLocked, resolveEating, step, steer, triggerDash } from "./sim.js";
+import { DASH_DURATION, DASH_PENALTY_DURATION } from "./sim.js";
 import { initStart, showBest, showLeaderboard } from "./start.js";
 import { startPuddleBackground } from "./puddle-bg.js";
 
@@ -29,6 +28,8 @@ function showStart() {
   if (!stopPuddleBg) stopPuddleBg = startPuddleBackground();
 }
 
+// The server is authoritative: this client's own role is to send input and
+// render whatever the latest interpolated snapshot says, not to simulate.
 function play({ username, colour }) {
   profile = { ...profile, username, colour };
   saveProfile(profile);
@@ -38,66 +39,87 @@ function play({ username, colour }) {
   stopPuddleBg?.();
   stopPuddleBg = null;
   resize();
-  const state = createState(colour, Object.keys(COLOURS));
-  state.player.name = profile.username.trim() || "anon";
   resetLiveboard();
   $("dash-bar").hidden = true;
   $("dash-hint").hidden = true;
   let dashBarShown = false;
   const dashCooldown = DASH_DURATION + DASH_PENALTY_DURATION;
-  $("give-up").onclick = () => {
-    state.alive = false;
-    state.gaveUp = true;
-  };
-  let last = performance.now();
+  let youId = null;
+  let lastYou = null; // most recent known "you" snapshot, for the give-up stats (the server sends no death message for a voluntary quit)
+  let elapsed = 0;
+  let running = true;
 
+  const net = connect({
+    name: profile.username.trim() || "anon",
+    colour,
+    onJoined: (id) => { youId = id; },
+    onDeath: (stats) => endRun(stats),
+    onClose: () => { if (running) endRun({ gaveUp: false }); },
+  });
+
+  $("give-up").onclick = () => {
+    const stats = lastYou
+      ? { score: Math.round(lastYou.score), size: Math.round(lastYou.size), timeSurvivedSeconds: Math.round(elapsed) }
+      : {};
+    net.close();
+    endRun({ ...stats, gaveUp: true });
+  };
+
+  let last = performance.now();
   const frame = (now) => {
+    if (!running) return;
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
+    elapsed += dt;
     const [hx, hy] = readHeading();
-    if (consumeDash()) {
-      triggerDash(state.player);
-      if (!dashBarShown) {
-        dashBarShown = true;
-        $("dash-bar").hidden = false;
+    const dash = consumeDash();
+    if (dash && !dashBarShown) {
+      dashBarShown = true;
+      $("dash-bar").hidden = false;
+    }
+    net.sendInput([hx, hy], dash);
+
+    const sample = net.sample();
+    const view = sample && youId != null ? interpolate(sample, youId) : null;
+    if (view?.you) {
+      lastYou = view.you;
+      updateLiveboard({ players: [view.you, ...view.players], bots: view.bots }, youId, dt);
+      if (dashBarShown) {
+        const { dashTimer, dashPenaltyTimer } = view.you;
+        // dashTimer (the burst) and dashPenaltyTimer (the slowdown after) run
+        // one after the other, not together: while still bursting, the full
+        // penalty is still ahead, so remaining time-to-ready is dashTimer plus
+        // the whole penalty duration, not just whichever timer is non-zero.
+        const remaining = dashTimer > 0 ? dashTimer + DASH_PENALTY_DURATION : dashPenaltyTimer;
+        const ready = remaining <= 0;
+        $("dash-fill").style.width = `${ready ? 100 : Math.max(0, (1 - remaining / dashCooldown) * 100)}%`;
+        $("dash-hint").hidden = !ready;
       }
+      render(ctx, { bots: view.bots, food: view.food }, view.you, view.players, dt);
+      $("hud").textContent = `Score ${Math.round(view.you.score)}  ${Math.round(elapsed)}s${view.you.locked ? "  (eating locked: only players can be eaten)" : ""}`;
     }
-    steer(state.player, hx, hy);
-    updateBots(state, dt);
-    step(state, dt);
-    resolveEating(state);
-    updateLiveboard(state, dt);
-    if (dashBarShown) {
-      const { dashTimer, dashPenaltyTimer } = state.player;
-      // dashTimer (the burst) and dashPenaltyTimer (the slowdown after) run
-      // one after the other, not together: while still bursting, the full
-      // penalty is still ahead, so remaining time-to-ready is dashTimer plus
-      // the whole penalty duration, not just whichever timer is non-zero.
-      const remaining = dashTimer > 0 ? dashTimer + DASH_PENALTY_DURATION : dashPenaltyTimer;
-      const ready = remaining <= 0;
-      $("dash-fill").style.width = `${ready ? 100 : Math.max(0, (1 - remaining / dashCooldown) * 100)}%`;
-      $("dash-hint").hidden = !ready;
-    }
-    render(ctx, state, dt);
-    $("hud").textContent = `Score ${Math.round(state.score)}  ${Math.round(state.elapsed)}s${eatingLocked(state) ? "  (eating locked: only players can be eaten)" : ""}`;
-    if (state.alive) return requestAnimationFrame(frame);
-    gameOver(state);
+    requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);
+
+  function endRun(stats) {
+    if (!running) return;
+    running = false;
+    gameOver(stats);
+  }
 }
 
-async function gameOver(state) {
-  const run = { score: Math.round(state.score), size: Math.round(state.maxSize), timeSurvivedSeconds: Math.round(state.elapsed) };
+async function gameOver({ eatenBy, gaveUp, score = 0, size = 0, timeSurvivedSeconds = 0 }) {
+  const run = { score, size, timeSurvivedSeconds };
   profile = recordRun(profile, run);
-  const killer = state.eatenBy;
-  const killerName = killer && (killer.name ?? killer.colour.charAt(0).toUpperCase() + killer.colour.slice(1));
-  $("gameover-title").textContent = state.gaveUp ? "Gave up" : killerName ? `Eaten by ${killerName}` : "Eaten!";
+  const killerName = eatenBy && (eatenBy.name ?? eatenBy.colour.charAt(0).toUpperCase() + eatenBy.colour.slice(1));
+  $("gameover-title").textContent = gaveUp ? "Gave up" : killerName ? `Eaten by ${killerName}` : "Eaten!";
   $("gameover-stats").textContent = `Score ${run.score} · Size ${run.size} · ${run.timeSurvivedSeconds}s`;
   $("gameover").hidden = false;
   try {
-    await submitScore({ name: profile.username, score: run.score, colour: profile.colour, timeSurvivedSeconds: run.timeSurvivedSeconds });
+    await showLeaderboard();
   } catch {
-    // leaderboard is best-effort; the personal best is already saved locally
+    // best-effort refresh; game-over screen still shows fine without it
   }
 }
 

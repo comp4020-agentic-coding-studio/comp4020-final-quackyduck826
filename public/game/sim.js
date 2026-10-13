@@ -1,4 +1,9 @@
-// Pure simulation: no DOM, fetch or canvas. State is a plain object.
+// Pure simulation: no DOM, fetch, canvas or network references, so the exact
+// same functions run the shared authoritative world on the server and (with a
+// bot-only, player-less world) painted the single-player version this used to
+// be. State is a plain object; players now live in a `players` array rather
+// than a single `player` field, since several real connections can share one
+// world.
 import { randomFishName } from "./fish-names.js";
 
 export const WORLD = 2000;
@@ -7,12 +12,12 @@ const FOOD_GROWTH = 1;
 const EAT_MARGIN = 1.1;
 const FOOD_COUNT = 40;
 const BASE_SPEED = 160;
-// Past this score the player can only eat other players (bots don't count).
+// Past this score an entity can only eat other players (bots don't count).
 export const EAT_LOCK_SCORE = 3000;
 const BIG_BOTS = 5;
 const SAFE_DISTANCE = 500;
 const TURN_RATE = 8; // radians/sec an entity can turn to face its heading
-const SHRINK_SIZE = 40; // past this size the player shrinks over time
+const SHRINK_SIZE = 40; // past this size a player shrinks over time
 const SHRINK_RATE = 1; // size lost per second while above SHRINK_SIZE
 const KELP_EAT_SIZE = 65; // past this size a fish has outgrown eating kelp
 const DASH_BOOST = 2.2; // speed multiplier while dashing
@@ -23,8 +28,8 @@ export const DASH_PENALTY_DURATION = 2.5; // seconds of slowdown that pays for t
 let nextId = 1;
 const rand = (n) => Math.random() * n;
 
-// `name` defaults to a random fish pun; main.js overwrites it with the
-// player's own username right after creating the player entity.
+// `name` defaults to a random fish pun; the caller overwrites it with a
+// player's own username right after creating their entity.
 export function makeEntity(colour, size = START_SIZE) {
   return {
     id: nextId++, x: rand(WORLD), y: rand(WORLD), vx: 0, vy: 0, size, colour,
@@ -43,20 +48,41 @@ export function spawnFood(colourPool) {
   return { id: nextId++, x: rand(WORLD), y: rand(WORLD), size: 3, colour: colourPool[Math.floor(rand(colourPool.length))] };
 }
 
-export function createState(playerColour, botColours, botCount = 14) {
-  const player = makeEntity(playerColour);
-  player.isPlayer = true;
-  const state = { player, bots: [], food: [], elapsed: 0, score: 0, maxSize: START_SIZE, alive: true, respawns: [], palette: botColours };
+// A world with no players yet: bots and food only. `addPlayer` below adds
+// players as they join and `removePlayer` as they leave or die, independent
+// of the world's own lifetime — joining or leaving never resets it.
+export function createWorld(botColours, botCount = 14) {
+  const state = { players: [], bots: [], food: [], respawns: [], events: [], elapsed: 0, palette: botColours };
   for (let i = 0; i < botCount; i++) state.bots.push(makeEntity(botColours[i % botColours.length], START_SIZE + rand(15)));
-  // Large bots from the start, spawned well away from the player.
   for (let i = 0; i < BIG_BOTS; i++) {
     const big = makeEntity(botColours[i % botColours.length], 60 + rand(50));
-    while (Math.hypot(big.x - player.x, big.y - player.y) < SAFE_DISTANCE) [big.x, big.y] = [rand(WORLD), rand(WORLD)];
     big.big = true;
     state.bots.push(big);
   }
   while (state.food.length < FOOD_COUNT) state.food.push(spawnFood(botColours));
   return state;
+}
+
+// Adds a new player entity to an existing world, spawned away from other
+// players and big bots so joining doesn't drop someone into an immediate
+// bite. Returns the new entity; caller sets its name.
+export function addPlayer(state, colour) {
+  const player = makeEntity(colour);
+  player.isPlayer = true;
+  player.score = 0;
+  player.maxSize = START_SIZE;
+  player.joinedAt = state.elapsed;
+  const threats = () => [...state.players, ...state.bots.filter((b) => b.big)];
+  let tries = 0;
+  while (tries++ < 20 && threats().some((t) => Math.hypot(t.x - player.x, t.y - player.y) < SAFE_DISTANCE)) {
+    [player.x, player.y] = [rand(WORLD), rand(WORLD)];
+  }
+  state.players.push(player);
+  return player;
+}
+
+export function removePlayer(state, player) {
+  state.players = state.players.filter((p) => p !== player);
 }
 
 const speedFor = (e) => {
@@ -71,8 +97,8 @@ const speedFor = (e) => {
 // `step()`, so a desired heading that swings wildly frame to frame (e.g. a
 // fleeing bot at close range, where the relative-position vector is hyper-
 // sensitive to tiny moves) turns the entity smoothly instead of snapping its
-// path instantly. Without `dt` (the player) the heading is applied as-is, for
-// instant, arcade-responsive control.
+// path instantly. Without `dt` (a player's own input) the heading is applied
+// as-is, for instant, arcade-responsive control.
 export function steer(e, hx, hy, dt) {
   const s = speedFor(e);
   if (dt == null) {
@@ -96,12 +122,15 @@ export function respawnBot(state, { colour, big }) {
   const bot = makeEntity(colour, big ? 60 + rand(50) : START_SIZE);
   if (big) {
     bot.big = true;
-    while (Math.hypot(bot.x - state.player.x, bot.y - state.player.y) < SAFE_DISTANCE) [bot.x, bot.y] = [rand(WORLD), rand(WORLD)];
+    let tries = 0;
+    while (tries++ < 20 && state.players.some((p) => Math.hypot(bot.x - p.x, bot.y - p.y) < SAFE_DISTANCE)) {
+      [bot.x, bot.y] = [rand(WORLD), rand(WORLD)];
+    }
   }
   state.bots.push(bot);
 }
 
-export const eatingLocked = (state) => state.score >= EAT_LOCK_SCORE;
+export const eatingLocked = (entity) => entity.isPlayer && entity.score >= EAT_LOCK_SCORE;
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
@@ -112,13 +141,17 @@ function bitingWithHead(attacker, prey) {
   return facing > 0;
 }
 
+// Mutates `state` in place: entities grow/die, dead players and bots are
+// removed, bot deaths are queued to respawn, food is topped back up. Any
+// player eaten is also recorded in `state.events` (an "eaten" event per
+// victim) so a caller (the room tick loop) can tell that player apart from
+// one who's still connected but just hasn't been snapshotted since dying.
 export function resolveEating(state) {
-  const all = [state.player, ...state.bots];
+  const all = [...state.players, ...state.bots];
   const dead = new Set();
   // Pickups
-  const locked = eatingLocked(state);
   for (const e of all) {
-    if (locked && e.isPlayer) continue;
+    if (eatingLocked(e)) continue;
     if (e.size > KELP_EAT_SIZE) continue;
     state.food = state.food.filter((f) => {
       if (dist(e, f) < e.size) {
@@ -133,16 +166,16 @@ export function resolveEating(state) {
     if (dead.has(a)) continue;
     for (const d of all) {
       if (a === d || dead.has(d)) continue;
-      // Locked player may only eat other players; bots aren't players.
-      if (locked && a.isPlayer && !d.isPlayer) continue;
+      // A locked attacker may only eat other players; bots aren't players.
+      if (eatingLocked(a) && !d.isPlayer) continue;
       if (a.size > d.size * EAT_MARGIN && dist(a, d) < a.size - d.size * 0.3 && bitingWithHead(a, d)) {
         a.size += d.size * 0.4;
         dead.add(d);
-        if (d === state.player) state.eatenBy = { name: a.name, colour: a.colour };
+        if (d.isPlayer) state.events.push({ type: "eaten", victim: d.id, by: { name: a.name, colour: a.colour } });
       }
     }
   }
-  if (dead.has(state.player)) state.alive = false;
+  state.players = state.players.filter((p) => !dead.has(p));
   for (const b of state.bots.filter((b) => dead.has(b))) state.respawns.push({ at: state.elapsed + 3, colour: b.colour, big: b.big });
   state.bots = state.bots.filter((b) => !dead.has(b));
   while (state.food.length < FOOD_COUNT) state.food.push(spawnFood(state.palette));
@@ -150,7 +183,7 @@ export function resolveEating(state) {
 
 export function step(state, dt) {
   state.elapsed += dt;
-  for (const e of [state.player, ...state.bots]) {
+  for (const e of [...state.players, ...state.bots]) {
     e.x = clamp(e.x + e.vx * dt);
     e.y = clamp(e.y + e.vy * dt);
     const speed = Math.hypot(e.vx, e.vy);
@@ -173,12 +206,12 @@ export function step(state, dt) {
       e.dashPenaltyTimer = Math.max(0, e.dashPenaltyTimer - dt);
     }
   }
-  state.maxSize = Math.max(state.maxSize, state.player.size);
-  if (state.player.size > SHRINK_SIZE) {
-    state.player.size = Math.max(SHRINK_SIZE, state.player.size - SHRINK_RATE * dt);
+  for (const p of state.players) {
+    p.maxSize = Math.max(p.maxSize, p.size);
+    if (p.size > SHRINK_SIZE) p.size = Math.max(SHRINK_SIZE, p.size - SHRINK_RATE * dt);
+    // Score tracks the peak size reached, so shrinking back down doesn't cost it.
+    p.score = p.maxSize;
   }
-  // Score tracks the peak size reached, so shrinking back down doesn't cost it.
-  state.score = state.maxSize;
   const due = state.respawns.filter((r) => r.at <= state.elapsed);
   state.respawns = state.respawns.filter((r) => r.at > state.elapsed);
   for (const r of due) respawnBot(state, r);
