@@ -8,3 +8,9 @@ where it lives --- `fly.toml`, the `Dockerfile`, the CI workflow and
 `spec/README.md` each say what they fix --- and the course website publishes the
 [final project brief](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/assessments/final-project/).
 What the agent needs to carry from any of it is your call.
+
+do not edit PROCESS.md or anything in the reflections folder wo-ithout permission.
+
+commit and push often in places where it makes sense so that changes can be reviewed as they are made, only at large milestones of if asked update the fly server.
+
+
