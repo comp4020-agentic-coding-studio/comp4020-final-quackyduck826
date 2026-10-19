@@ -42,10 +42,14 @@ export function makeEntity(colour, size = START_SIZE) {
   };
 }
 
-// No-op while already dashing or still paying off the last one.
+// No-op while already dashing or still paying off the last one. Returns
+// whether a dash actually started, so a caller tallying dash attempts (e.g.
+// a "dash N times" quest) can tell a real dash apart from one blocked by
+// cooldown, rather than counting every button press.
 export function triggerDash(e) {
-  if (e.dashTimer > 0 || e.dashPenaltyTimer > 0) return;
+  if (e.dashTimer > 0 || e.dashPenaltyTimer > 0) return false;
   e.dashTimer = DASH_DURATION;
+  return true;
 }
 
 export function spawnFood(colourPool) {
@@ -169,6 +173,10 @@ export function resolveEating(state) {
     state.food = state.food.filter((f) => {
       if (dist(e, f) < e.size) {
         e.size = Math.min(MAX_SIZE, e.size + FOOD_GROWTH);
+        // Generic "this entity consumed something" record, same spirit as
+        // the "eaten" event below — lets a caller (the room tick loop) tally
+        // who ate food without having to inspect state.food itself.
+        state.events.push({ type: "food", by: e.id });
         return false;
       }
       return true;
@@ -184,7 +192,13 @@ export function resolveEating(state) {
       if (a.size > d.size * EAT_MARGIN && dist(a, d) < a.size - d.size * 0.3 && bitingWithHead(a, d)) {
         a.size = Math.min(MAX_SIZE, a.size + d.size * 0.4);
         dead.add(d);
-        state.events.push({ type: "eaten", x: d.x, y: d.y, victim: d.id, victimIsPlayer: !!d.isPlayer, by: { name: a.name, colour: a.colour } });
+        // `victimSize` is the victim's size at the moment it was eaten (before
+        // it's removed from state below), and `by.id` identifies which entity
+        // did the eating (name/colour alone can collide between two players).
+        // Both are generic event detail, not quest-specific — a caller that
+        // wants to tally kills, or scale an effect by what was eaten, needs
+        // this regardless of what it tallies it for.
+        state.events.push({ type: "eaten", x: d.x, y: d.y, victim: d.id, victimIsPlayer: !!d.isPlayer, victimSize: d.size, by: { id: a.id, name: a.name, colour: a.colour } });
       }
     }
   }
