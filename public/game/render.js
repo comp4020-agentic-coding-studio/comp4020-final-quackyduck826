@@ -334,7 +334,12 @@ function drawFish(ctx, e, outline) {
 // every other real player currently in the world, drawn with a thinner gold
 // ring and gold name label so a real rival reads differently from a bot.
 export function render(ctx, state, you, others, dt = 1 / 60) {
-  const { width: w, height: h } = ctx.canvas;
+  // CSS-pixel size, not the (possibly device-pixel-scaled) backing-store
+  // width/height: the context already carries a dpr scale transform set once
+  // in main.js's resize(), so measurements here must stay in the same CSS-pixel
+  // space that transform maps into device pixels, or the camera centering
+  // would double-apply the scale.
+  const { clientWidth: w, clientHeight: h } = ctx.canvas;
   ctx.clearRect(0, 0, w, h);
   ctx.save();
   ctx.translate(w / 2 - you.x, h / 2 - you.y);

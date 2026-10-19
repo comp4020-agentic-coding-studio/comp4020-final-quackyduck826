@@ -14,9 +14,16 @@ const { readHeading, consumeDash } = createInput(canvas);
 let profile = loadProfile();
 let stopPuddleBg = null;
 
+// Backing store sized at device pixel density (not just CSS pixels), then
+// scaled back down via the context transform: without this, a canvas stretched
+// to fill a high-DPI screen (e.g. retina, most phones) is rendered at half
+// resolution or less and upscaled, which is what made text and fine strokes
+// look soft/fuzzy rather than cleanly anti-aliased.
 function resize() {
-  canvas.width = innerWidth;
-  canvas.height = innerHeight;
+  const dpr = devicePixelRatio || 1;
+  canvas.width = innerWidth * dpr;
+  canvas.height = innerHeight * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 addEventListener("resize", resize);
 
