@@ -4,7 +4,14 @@ export const COLOURS = {
   sky: "#4cc9f0", violet: "#a78bfa", pink: "#f472b6", slate: "#94a3b8",
 };
 
-const blank = () => ({ username: "", colour: "coral", personalBest: null, crownUnlocked: false, wantsCrown: true });
+// VETERAN_RUNS is exported so start.js can show its own unlock tooltip
+// without duplicating the number.
+export const VETERAN_RUNS = 10;
+
+const blank = () => ({
+  username: "", colour: "coral", personalBest: null,
+  hatsUnlocked: [], wornHat: null, runsPlayed: 0,
+});
 
 export function loadProfile() {
   try {
@@ -26,10 +33,19 @@ export function recordRun(profile, run) {
     size: Math.max(prev.size, run.size),
     timeSurvivedSeconds: Math.max(prev.timeSurvivedSeconds, run.timeSurvivedSeconds),
   };
-  // Once unlocked, stays unlocked: the server re-derives `crowned` from
-  // gameplay each run, so this only ever turns true, never back off.
-  const crownUnlocked = profile.crownUnlocked || !!run.crowned;
-  const next = { ...profile, personalBest, crownUnlocked };
+  const runsPlayed = profile.runsPlayed + 1;
+  // Union, not replace: `run.quests` is only what this run satisfied, not
+  // the player's whole unlock history, and the server re-derives each one
+  // from gameplay every run, so this only ever grows, never drops a hat.
+  const hatsUnlocked = new Set(profile.hatsUnlocked);
+  for (const q of run.quests ?? []) hatsUnlocked.add(q);
+  // "veteran" is the one quest with no server corroboration at all — there's
+  // no account system to check a lifetime run count against, so it's trusted
+  // from this purely client-side counter, same trust level the game already
+  // gives a player's chosen colour (cosmetic-only, nothing mechanical reads
+  // it). Every other hat in hatsUnlocked came from the server's own tally.
+  if (runsPlayed >= VETERAN_RUNS) hatsUnlocked.add("veteran");
+  const next = { ...profile, personalBest, runsPlayed, hatsUnlocked: [...hatsUnlocked] };
   saveProfile(next);
   return next;
 }
