@@ -500,8 +500,39 @@ const HAT_RENDERERS = {
   leaderboardLeader: drawTrophy,
 };
 
-function drawHat(ctx, hatId, headR, noseCenterX) {
-  HAT_RENDERERS[hatId]?.(ctx, headR, noseCenterX);
+// Every hat renderer above draws at "full size", sized and positioned purely
+// in terms of headR/noseCenterX as if it were the only thing on the head.
+// Shrunk and shifted back here, in one place, rather than in each of the ten
+// functions: HAT_SCALE makes every hat a bit smaller, and HAT_BACK_SHIFT
+// (in true headR units, applied before the scale so it isn't itself shrunk)
+// moves the whole hat toward the tail so its forward edge clears the eyes
+// (centred at noseCenterX + headR*0.3) instead of sitting on top of them.
+const HAT_SCALE = 0.75;
+const HAT_BACK_SHIFT = 0.4;
+
+export function drawHat(ctx, hatId, headR, noseCenterX) {
+  const renderer = HAT_RENDERERS[hatId];
+  if (!renderer) return;
+  ctx.save();
+  ctx.translate(noseCenterX - headR * HAT_BACK_SHIFT, 0);
+  ctx.scale(HAT_SCALE, HAT_SCALE);
+  renderer(ctx, headR, 0);
+  ctx.restore();
+}
+
+// Renders one hat, centred and at icon scale, into a small standalone
+// canvas — used for the greyed-out preview on each tile in the hats menu
+// (start.js), not for anything drawn in-world. `noseCenterX` there is always
+// 0: these previews show the hat on its own, not attached to a particular
+// fish's head/body geometry.
+export function drawHatIcon(canvas, hatId) {
+  const ctx = canvas.getContext("2d");
+  const { width: w, height: h } = canvas;
+  ctx.clearRect(0, 0, w, h);
+  ctx.save();
+  ctx.translate(w / 2, h * 0.6);
+  drawHat(ctx, hatId, Math.min(w, h) * 0.4, 0);
+  ctx.restore();
 }
 
 // Teardrop body (round head, pointed tail-base) viewed from directly above,

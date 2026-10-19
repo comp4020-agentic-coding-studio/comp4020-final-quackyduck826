@@ -1,5 +1,8 @@
 import { COLOURS, VETERAN_RUNS } from "./profile.js";
 import { getLeaderboard } from "./leaderboard.js";
+import { drawHatIcon } from "./render.js";
+
+const ICON_SIZE = 40; // CSS px; backing store doubled below for crisper strokes
 
 // Mirrors src/server/HAT_IDS (that one's TypeScript, loaded server-side only,
 // so the ids are duplicated here rather than shared across the client/server
@@ -32,11 +35,28 @@ function renderHatsMenu(menu, profile) {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "hat-tile";
-    b.textContent = label;
     b.title = title;
     const unlocked = id === null || profile.hatsUnlocked.includes(id);
     b.disabled = !unlocked;
     b.setAttribute("aria-pressed", String(id === selected));
+
+    if (id !== null) {
+      const canvas = document.createElement("canvas");
+      canvas.className = "hat-tile-icon";
+      // Backing store at 2x the CSS size for a crisper preview on high-DPI
+      // screens — these are tiny, standalone canvases (render.js's drawHatIcon
+      // doesn't touch the main game canvas or its own dpr transform at all),
+      // so there's no shared camera/scale state to keep in sync with here.
+      canvas.width = ICON_SIZE * 2;
+      canvas.height = ICON_SIZE * 2;
+      // Greyed out until unlocked, so the shape is visible as a teaser of
+      // what to aim for without spoiling its actual colour.
+      canvas.style.filter = unlocked ? "" : "grayscale(1) brightness(.6)";
+      drawHatIcon(canvas, id);
+      b.append(canvas);
+    }
+    b.append(document.createTextNode(label));
+
     if (unlocked) {
       b.onclick = () => {
         selected = id;
