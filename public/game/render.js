@@ -226,11 +226,13 @@ function drawBites(ctx, dt) {
   }
 }
 
-// A small three-peak crown, drawn in the same local (unrotated-relative-to-
-// the-fish) space as the fins/eyes below, so it turns with the fish and
-// stays planted on the head rather than needing its own position tracking.
-// Centred so it sits within the head's own silhouette, reading as worn rather
-// than stuck on.
+// Every hat below is drawn in the same local (unrotated-relative-to-the-fish)
+// space as the fins/eyes in drawFish, so each turns with the fish and stays
+// planted on the head rather than needing its own position tracking. All take
+// (ctx, headR, noseCenterX) and are centred so they sit within the head's own
+// silhouette, reading as worn rather than stuck on.
+
+// Crown: gold three-peak crown — the original, pre-existing hat.
 function drawCrown(ctx, headR, noseCenterX) {
   const cx = noseCenterX - headR * 0.15;
   const halfW = headR * 0.8;
@@ -253,6 +255,253 @@ function drawCrown(ctx, headR, noseCenterX) {
   ctx.strokeStyle = "#8a5a00";
   ctx.lineWidth = Math.max(1, headR * 0.05);
   ctx.stroke();
+}
+
+// Survivalist: khaki wide round brim (a flattened ellipse) with a low olive
+// dome on top.
+function drawSurvivalistHat(ctx, headR, noseCenterX) {
+  const cx = noseCenterX - headR * 0.1;
+  ctx.beginPath();
+  ctx.ellipse(cx, 0, headR * 0.95, headR * 0.55, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "#8a7a4a";
+  ctx.fill();
+  ctx.strokeStyle = "#5f5330";
+  ctx.lineWidth = Math.max(1, headR * 0.04);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(cx, 0, headR * 0.55, headR * 0.4, 0, Math.PI, 0);
+  ctx.fillStyle = "#6b7f3f";
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx, 0, headR * 0.55, headR * 0.4, 0, 0, Math.PI, true);
+  ctx.strokeStyle = "#4a5a2b";
+  ctx.lineWidth = Math.max(1, headR * 0.06);
+  ctx.stroke();
+}
+
+// Glutton: white chef's toque — a few overlapping rounded humps on a thin
+// white band.
+function drawChefHat(ctx, headR, noseCenterX) {
+  const cx = noseCenterX;
+  ctx.fillStyle = "#f2f2f2";
+  ctx.strokeStyle = "#c8c8c8";
+  ctx.lineWidth = Math.max(1, headR * 0.03);
+  ctx.beginPath();
+  ctx.rect(cx - headR * 0.6, -headR * 0.25, headR * 1.2, headR * 0.3);
+  ctx.fill();
+  ctx.stroke();
+  [-0.4, 0, 0.4].forEach((off) => {
+    ctx.beginPath();
+    ctx.arc(cx + headR * off, -headR * 0.35, headR * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  });
+}
+
+// Herbivore: a ring of small leaf shapes around a headband arc, with a
+// couple of small flower-dot accents.
+function drawLeafCrown(ctx, headR, noseCenterX) {
+  const cx = noseCenterX - headR * 0.1;
+  const leaves = 6;
+  for (let i = 0; i < leaves; i++) {
+    const a = -Math.PI * 0.75 + (i / (leaves - 1)) * Math.PI * 1.5;
+    const lx = cx + Math.cos(a) * headR * 0.85;
+    const ly = Math.sin(a) * headR * 0.85;
+    ctx.save();
+    ctx.translate(lx, ly);
+    ctx.rotate(a + Math.PI / 2);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, headR * 0.12, headR * 0.26, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "#4caf50";
+    ctx.fill();
+    ctx.restore();
+  }
+  [-0.35, 0.35].forEach((off) => {
+    ctx.beginPath();
+    ctx.arc(cx + headR * off, -headR * 0.75, headR * 0.1, 0, Math.PI * 2);
+    ctx.fillStyle = off < 0 ? "#f472b6" : "#ffd76b";
+    ctx.fill();
+  });
+}
+
+// Dash Master: a small orange cap with speed-chevron strokes trailing off
+// the back (toward the tail), suggesting motion.
+function drawDashCap(ctx, headR, noseCenterX) {
+  const cx = noseCenterX - headR * 0.1;
+  ctx.beginPath();
+  ctx.ellipse(cx, -headR * 0.1, headR * 0.6, headR * 0.45, 0, Math.PI, 0);
+  ctx.fillStyle = "#ff7a33";
+  ctx.fill();
+  ctx.strokeStyle = "#b3451c";
+  ctx.lineWidth = Math.max(1, headR * 0.04);
+  ctx.stroke();
+  ctx.strokeStyle = "#ffb347";
+  ctx.lineWidth = Math.max(1, headR * 0.08);
+  ctx.lineCap = "round";
+  [-0.3, 0, 0.3].forEach((off) => {
+    ctx.beginPath();
+    ctx.moveTo(cx - headR * 0.7, off * headR);
+    ctx.lineTo(cx - headR * 1.1, off * headR * 1.4);
+    ctx.stroke();
+  });
+}
+
+// Player Hunter: a dark tricorn silhouette (one upturned peak) with a small
+// red feather accent.
+function drawTricorn(ctx, headR, noseCenterX) {
+  const cx = noseCenterX - headR * 0.05;
+  ctx.beginPath();
+  ctx.moveTo(cx - headR * 0.9, headR * 0.3);
+  ctx.quadraticCurveTo(cx - headR * 0.3, -headR * 0.9, cx + headR * 0.3, -headR * 0.5);
+  ctx.quadraticCurveTo(cx + headR * 0.9, -headR * 0.2, cx + headR * 0.8, headR * 0.35);
+  ctx.quadraticCurveTo(cx, headR * 0.1, cx - headR * 0.9, headR * 0.3);
+  ctx.closePath();
+  ctx.fillStyle = "#1c2430";
+  ctx.fill();
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = Math.max(1, headR * 0.04);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx + headR * 0.1, -headR * 0.6);
+  ctx.quadraticCurveTo(cx + headR * 0.5, -headR * 1.1, cx + headR * 0.3, -headR * 1.3);
+  ctx.strokeStyle = "#c0392b";
+  ctx.lineWidth = Math.max(1, headR * 0.1);
+  ctx.lineCap = "round";
+  ctx.stroke();
+}
+
+// Giant Slayer: a simplified viking helmet — a grey/silver dome with two
+// curved horns sweeping outward from the sides.
+function drawVikingHelmet(ctx, headR, noseCenterX) {
+  const cx = noseCenterX - headR * 0.1;
+  ctx.beginPath();
+  ctx.arc(cx, 0, headR * 0.7, Math.PI, 0);
+  ctx.fillStyle = "#9aa0a6";
+  ctx.fill();
+  ctx.strokeStyle = "#5a5f66";
+  ctx.lineWidth = Math.max(1, headR * 0.05);
+  ctx.stroke();
+  ctx.lineCap = "round";
+  [-1, 1].forEach((side) => {
+    ctx.beginPath();
+    ctx.moveTo(cx, -side * headR * 0.1);
+    ctx.quadraticCurveTo(cx - headR * 0.9, -side * headR * 0.5, cx - headR * 0.75, -side * headR * 0.9);
+    ctx.strokeStyle = "#e8e4d8";
+    ctx.lineWidth = Math.max(1, headR * 0.12);
+    ctx.stroke();
+  });
+}
+
+// Veteran: a weathered brown fedora — narrower brim than the Survivalist
+// hat's, darker colour, with a tiny worn-patch mark reading as well-used.
+function drawFedora(ctx, headR, noseCenterX) {
+  const cx = noseCenterX - headR * 0.1;
+  ctx.beginPath();
+  ctx.ellipse(cx, 0, headR * 0.75, headR * 0.35, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "#6b4a2b";
+  ctx.fill();
+  ctx.strokeStyle = "#45301b";
+  ctx.lineWidth = Math.max(1, headR * 0.04);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(cx, -headR * 0.05, headR * 0.45, headR * 0.45, 0, Math.PI, 0);
+  ctx.fillStyle = "#523823";
+  ctx.fill();
+  // A tiny worn-patch mark (an X-stitch) on the crown.
+  ctx.strokeStyle = "#d8c9a0";
+  ctx.lineWidth = Math.max(1, headR * 0.03);
+  const px = cx + headR * 0.15;
+  ctx.beginPath();
+  ctx.moveTo(px - headR * 0.06, -headR * 0.28);
+  ctx.lineTo(px + headR * 0.06, -headR * 0.16);
+  ctx.moveTo(px + headR * 0.06, -headR * 0.28);
+  ctx.lineTo(px - headR * 0.06, -headR * 0.16);
+  ctx.stroke();
+}
+
+// Leaderboard Entrant: a small bronze medal disc above the head with a thin
+// rim and a tiny star mark.
+function drawMedal(ctx, headR, noseCenterX) {
+  const cx = noseCenterX - headR * 0.1;
+  const cy = -headR * 0.9;
+  const r = headR * 0.35;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = "#cd7f32";
+  ctx.fill();
+  ctx.strokeStyle = "#8a5522";
+  ctx.lineWidth = Math.max(1, headR * 0.04);
+  ctx.stroke();
+  drawStar(ctx, cx, cy, r * 0.55, "#eecb9a");
+}
+
+// Leaderboard Leader: a small gold trophy-cup silhouette (bowl + two handle
+// loops + a stem/base) — deliberately a different shape family from Crown.
+function drawTrophy(ctx, headR, noseCenterX) {
+  const cx = noseCenterX - headR * 0.1;
+  const topY = -headR * 1.3;
+  const bowlW = headR * 0.5;
+  const bowlH = headR * 0.45;
+  ctx.fillStyle = "#ffd76b";
+  ctx.strokeStyle = "#a8841f";
+  ctx.lineWidth = Math.max(1, headR * 0.04);
+
+  ctx.beginPath();
+  ctx.moveTo(cx - bowlW, topY);
+  ctx.quadraticCurveTo(cx - bowlW, topY + bowlH, cx, topY + bowlH);
+  ctx.quadraticCurveTo(cx + bowlW, topY + bowlH, cx + bowlW, topY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  [-1, 1].forEach((side) => {
+    ctx.beginPath();
+    ctx.ellipse(cx + side * bowlW * 1.3, topY + bowlH * 0.3, bowlW * 0.35, bowlH * 0.4, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  });
+
+  ctx.beginPath();
+  ctx.rect(cx - headR * 0.08, topY + bowlH, headR * 0.16, headR * 0.3);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.rect(cx - headR * 0.25, topY + bowlH + headR * 0.3, headR * 0.5, headR * 0.12);
+  ctx.fill();
+  ctx.stroke();
+}
+
+function drawStar(ctx, cx, cy, r, colour) {
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const outerA = -Math.PI / 2 + (i / 5) * Math.PI * 2;
+    const innerA = outerA + Math.PI / 5;
+    const ox = cx + Math.cos(outerA) * r;
+    const oy = cy + Math.sin(outerA) * r;
+    const ix = cx + Math.cos(innerA) * r * 0.45;
+    const iy = cy + Math.sin(innerA) * r * 0.45;
+    if (i === 0) ctx.moveTo(ox, oy);
+    else ctx.lineTo(ox, oy);
+    ctx.lineTo(ix, iy);
+  }
+  ctx.closePath();
+  ctx.fillStyle = colour;
+  ctx.fill();
+}
+
+const HAT_RENDERERS = {
+  crown: drawCrown,
+  survivalist: drawSurvivalistHat,
+  glutton: drawChefHat,
+  herbivore: drawLeafCrown,
+  dashMaster: drawDashCap,
+  playerHunter: drawTricorn,
+  giantSlayer: drawVikingHelmet,
+  veteran: drawFedora,
+  leaderboardEntrant: drawMedal,
+  leaderboardLeader: drawTrophy,
+};
+
+function drawHat(ctx, hatId, headR, noseCenterX) {
+  HAT_RENDERERS[hatId]?.(ctx, headR, noseCenterX);
 }
 
 // Teardrop body (round head, pointed tail-base) viewed from directly above,
@@ -340,7 +589,7 @@ function drawFish(ctx, e, outline) {
     ctx.fill();
   });
 
-  if (e.crown) drawCrown(ctx, headR, noseCenterX);
+  if (e.hat) drawHat(ctx, e.hat, headR, noseCenterX);
 
   ctx.restore();
 
