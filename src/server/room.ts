@@ -6,6 +6,7 @@
 import type { WebSocket } from "ws";
 import { updateBots } from "../../public/game/bots.js";
 import { COLOURS as COLOUR_NAMES, submit } from "./leaderboard.ts";
+import { THRESHOLDS } from "./quests.ts";
 import {
   addPlayer,
   createWorld,
@@ -47,6 +48,19 @@ interface Player extends Entity {
   joinedAt: number;
   crowned: boolean;
   wearCrown: boolean;
+  // Quest tallies, accumulated over the run and read once at the end
+  // (death or give-up) by checkQuests() — see quests.ts.
+  entitiesEaten: number;
+  foodEaten: number;
+  dashCount: number;
+  ateAPlayer: boolean;
+  ateGiant: boolean;
+  // Rolling history of recent sizes, oldest first, used only for the Giant
+  // Slayer check: "bigger than you were GIANT_SLAYER_WINDOW_SECONDS ago".
+  // Sampled once a second (sinceSizeSample accumulates dt between samples),
+  // not every tick — a full tick-rate history would be wasteful.
+  sizeHistory: number[];
+  sinceSizeSample: number;
 }
 interface Food {
   id: number;
@@ -61,13 +75,18 @@ interface EatenEvent {
   y: number;
   victim: number;
   victimIsPlayer: boolean;
-  by: { name: string; colour: string };
+  victimSize: number;
+  by: { id: number; name: string; colour: string };
+}
+interface FoodEvent {
+  type: "food";
+  by: number;
 }
 interface World {
   players: Player[];
   bots: Entity[];
   food: Food[];
-  events: EatenEvent[];
+  events: (EatenEvent | FoodEvent)[];
   elapsed: number;
 }
 
@@ -111,6 +130,13 @@ export function handleConnection(socket: WebSocket): void {
       // localStorage record of a past unlock — nothing mechanical depends on it.
       player.crowned = false;
       player.wearCrown = wearCrown === true;
+      player.entitiesEaten = 0;
+      player.foodEaten = 0;
+      player.dashCount = 0;
+      player.ateAPlayer = false;
+      player.ateGiant = false;
+      player.sizeHistory = [player.size];
+      player.sinceSizeSample = 0;
       conn.player = player;
       send(socket, { type: "joined", id: player.id });
       return;
@@ -159,21 +185,54 @@ function submitRun(p: Player): void {
 }
 
 function tick(): void {
+  const dt = TICK_MS / 1000;
   for (const conn of connections.values()) {
     if (!conn.player) continue;
     steer(conn.player, conn.heading[0], conn.heading[1]);
     if (conn.dash) {
-      triggerDash(conn.player);
+      // Only a dash that actually started counts toward the quest tally —
+      // a press during cooldown is a no-op in sim.js and shouldn't inflate it.
+      if (triggerDash(conn.player)) conn.player.dashCount++;
       conn.dash = false;
     }
   }
   updateBots(world, TICK_MS / 1000);
   step(world, TICK_MS / 1000);
   resolveEating(world);
-  // Sticky: once true, stays true for the rest of the run even if the player
-  // later shrinks back down (SHRINK_RATE applies above SHRINK_SIZE).
+
+  const byId = new Map(world.players.map((p) => [p.id, p]));
+  for (const e of world.events) {
+    if (e.type === "food") {
+      const eater = byId.get(e.by);
+      if (eater) eater.foodEaten++;
+    } else {
+      const attacker = byId.get(e.by.id);
+      if (!attacker) continue;
+      attacker.entitiesEaten++;
+      if (e.victimIsPlayer) attacker.ateAPlayer = true;
+      // Giant Slayer: victim is substantial on its own (the floor), and at
+      // least GIANT_SLAYER_MULTIPLIER times the attacker's own size from
+      // GIANT_SLAYER_WINDOW_SECONDS ago (sizeHistory[0], the oldest sample
+      // still in the window) — see quests.ts for the full reasoning.
+      const referenceSize = attacker.sizeHistory[0] ?? attacker.size;
+      if (e.victimSize >= referenceSize * THRESHOLDS.giantSlayerMultiplier && e.victimSize >= THRESHOLDS.giantSlayerMinVictimSize) {
+        attacker.ateGiant = true;
+      }
+    }
+  }
+
   for (const p of world.players) {
+    // Sticky: once true, stays true for the rest of the run even if the player
+    // later shrinks back down (SHRINK_RATE applies above SHRINK_SIZE).
     if (p.size >= MAX_SIZE) p.crowned = true;
+
+    p.sinceSizeSample += dt;
+    if (p.sinceSizeSample >= 1) {
+      p.sinceSizeSample = 0;
+      p.sizeHistory.push(p.size);
+      const maxSamples = THRESHOLDS.giantSlayerWindowSeconds;
+      if (p.sizeHistory.length > maxSamples) p.sizeHistory.shift();
+    }
   }
   broadcast();
 }
