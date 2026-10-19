@@ -41,7 +41,7 @@ const server = createServer(async (req, res) => {
         }
         const parsed = parseSubmission(body);
         if (!parsed.ok) return send(res, 400, "application/json", json({ error: parsed.error }));
-        return send(res, 200, "application/json", json({ entries: await submit(parsed.entry) }));
+        return send(res, 200, "application/json", json({ entries: (await submit(parsed.entry)).entries }));
       }
       return send(res, 405, "text/plain", "method not allowed");
     }

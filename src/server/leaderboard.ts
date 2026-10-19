@@ -62,16 +62,26 @@ export function parseSubmission(body: unknown): Parsed {
   return { ok: true, entry: { name: clean || "anon", score, colour, timeSurvivedSeconds: time } };
 }
 
-export function submit(entry: Omit<Entry, "achievedAt">): Promise<Entry[]> {
-  const next = [...entries, { ...entry, achievedAt: new Date().toISOString() }]
-    .sort((a, b) => b.score - a.score)
-    .slice(0, MAX_ENTRIES);
+export interface SubmitResult {
+  entries: Entry[];
+  // 0-based index of this submission in the final top-10 list, or null if it
+  // didn't place — lets a caller (e.g. a "reached the leaderboard"/"reached
+  // #1" quest check) know where this run landed without re-deriving it from
+  // `entries` itself (a duplicate score, or the leaderboard changing under a
+  // concurrent submission, would make that unreliable).
+  rank: number | null;
+}
+
+export function submit(entry: Omit<Entry, "achievedAt">): Promise<SubmitResult> {
+  const submitted = { ...entry, achievedAt: new Date().toISOString() };
+  const next = [...entries, submitted].sort((a, b) => b.score - a.score).slice(0, MAX_ENTRIES);
   entries = next;
+  const rank = next.indexOf(submitted);
   const write = chain.then(async () => {
     const tmp = file + ".tmp";
     await writeFile(tmp, JSON.stringify({ entries: next }, null, 2));
     await rename(tmp, file);
   });
   chain = write.catch(() => {});
-  return write.then(() => next);
+  return write.then(() => ({ entries: next, rank: rank === -1 ? null : rank }));
 }
