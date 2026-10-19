@@ -95,9 +95,15 @@ export function updateBots(state, dt) {
       target = pickSticky(b, "targetId", all, (o) => b.size > o.size * 1.1);
     }
     if (!flee && !target) {
+      // Unbounded by SIGHT (unlike the rival/flee checks above): food is
+      // always maintained somewhere in the world (resolveEating tops it back
+      // up to FOOD_COUNT), so a bot should always have a food heading rather
+      // than falling through to wander just because nothing edible happens to
+      // be within rival-detection range. Without this, a bot between food
+      // patches would wander — a random walk in heading that visibly loops/
+      // circles — instead of purposefully heading toward the nearest food.
       for (const f of state.food) {
-        const d = dist(b, f);
-        if (d < SIGHT && (!target || d < dist(b, target))) target = f;
+        if (!target || dist(b, f) < dist(b, target)) target = f;
       }
     }
     let hx, hy;
