@@ -19,8 +19,8 @@ const BIG_BOT_MIN = 40;
 const BIG_BOT_RANGE = 30; // big bots spawn at BIG_BOT_MIN..BIG_BOT_MIN+BIG_BOT_RANGE
 const SAFE_DISTANCE = 500;
 const TURN_RATE = 8; // radians/sec an entity can turn to face its heading
-const SHRINK_SIZE = 40; // past this size a player shrinks over time
-const SHRINK_RATE = 1; // size lost per second while above SHRINK_SIZE
+const SHRINK_SIZE = 40; // past this size an entity shrinks over time
+const SHRINK_RATE = 1 / 3; // size lost per second while above SHRINK_SIZE
 const KELP_EAT_SIZE = 60; // past this size a fish has outgrown eating kelp
 const DASH_BOOST = 2.2; // speed multiplier while dashing
 export const DASH_DURATION = 0.3; // seconds the dash burst lasts
@@ -209,10 +209,10 @@ export function step(state, dt) {
     } else if (e.dashPenaltyTimer > 0) {
       e.dashPenaltyTimer = Math.max(0, e.dashPenaltyTimer - dt);
     }
+    if (e.size > SHRINK_SIZE) e.size = Math.max(SHRINK_SIZE, e.size - SHRINK_RATE * dt);
   }
   for (const p of state.players) {
     p.maxSize = Math.max(p.maxSize, p.size);
-    if (p.size > SHRINK_SIZE) p.size = Math.max(SHRINK_SIZE, p.size - SHRINK_RATE * dt);
     // Score tracks the peak size reached, so shrinking back down doesn't cost it.
     p.score = p.maxSize;
   }
