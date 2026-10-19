@@ -65,6 +65,13 @@ export function createWorld(botColours, botCount = 14) {
   return state;
 }
 
+// A flat SAFE_DISTANCE stops working once a threat has grown past it (no cap
+// on size, so an old, well-fed fish can end up with a body bigger than the
+// clearance itself) — a spawn point outside the threat's *center* can still
+// land inside its *body*. Scales the clearance with the threat's own size so
+// it always keeps the spawn point outside the entity's visual envelope.
+const clearanceFrom = (t) => Math.max(SAFE_DISTANCE, t.size * 2);
+
 // Adds a new player entity to an existing world, spawned away from other
 // players and big bots so joining doesn't drop someone into an immediate
 // bite. Returns the new entity; caller sets its name.
@@ -76,7 +83,7 @@ export function addPlayer(state, colour) {
   player.joinedAt = state.elapsed;
   const threats = () => [...state.players, ...state.bots.filter((b) => b.big)];
   let tries = 0;
-  while (tries++ < 20 && threats().some((t) => Math.hypot(t.x - player.x, t.y - player.y) < SAFE_DISTANCE)) {
+  while (tries++ < 20 && threats().some((t) => Math.hypot(t.x - player.x, t.y - player.y) < clearanceFrom(t))) {
     [player.x, player.y] = [rand(WORLD), rand(WORLD)];
   }
   state.players.push(player);
@@ -125,7 +132,7 @@ export function respawnBot(state, { colour, big }) {
   if (big) {
     bot.big = true;
     let tries = 0;
-    while (tries++ < 20 && state.players.some((p) => Math.hypot(bot.x - p.x, bot.y - p.y) < SAFE_DISTANCE)) {
+    while (tries++ < 20 && state.players.some((p) => Math.hypot(bot.x - p.x, bot.y - p.y) < clearanceFrom(p))) {
       [bot.x, bot.y] = [rand(WORLD), rand(WORLD)];
     }
   }
