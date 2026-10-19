@@ -4,7 +4,7 @@ import { connect, interpolate } from "./net.js";
 import { loadProfile, recordRun, saveProfile } from "./profile.js";
 import { render, triggerBite } from "./render.js";
 import { DASH_DURATION, DASH_PENALTY_DURATION } from "./sim.js";
-import { initStart, refreshCrownToggle, showBest, showLeaderboard } from "./start.js";
+import { HATS, initStart, showBest, showLeaderboard } from "./start.js";
 import { startPuddleBackground } from "./puddle-bg.js";
 
 const $ = (id) => document.getElementById(id);
@@ -33,18 +33,14 @@ function showStart() {
   $("start").hidden = false;
   showBest(profile);
   showLeaderboard();
-  refreshCrownToggle(profile);
+  start.refresh(profile);
   if (!stopPuddleBg) stopPuddleBg = startPuddleBackground();
 }
 
 // The server is authoritative: this client's own role is to send input and
 // render whatever the latest interpolated snapshot says, not to simulate.
-function play({ username, colour, wearCrown }) {
-  // Only remember the toggle's own state once it's actually unlocked and
-  // shown; before that, `wearCrown` is always false (the toggle is hidden and
-  // start.js never sends it true) and shouldn't stomp the pre-unlock default.
-  const wantsCrown = profile.crownUnlocked ? !!wearCrown : profile.wantsCrown;
-  profile = { ...profile, username, colour, wantsCrown };
+function play({ username, colour, wornHat }) {
+  profile = { ...profile, username, colour, wornHat };
   saveProfile(profile);
   $("start").hidden = true;
   $("game").hidden = false;
@@ -66,7 +62,7 @@ function play({ username, colour, wearCrown }) {
   const net = connect({
     name: profile.username.trim() || "anon",
     colour,
-    wearCrown,
+    wornHat,
     onJoined: (id) => { youId = id; },
     onDeath: (stats) => endRun(stats),
     // Only an *unexpected* close (the socket dropping on its own, not after a
@@ -80,11 +76,22 @@ function play({ username, colour, wearCrown }) {
     },
   });
 
+  // Give-up asks the server to end the run (so quest tallies and the
+  // leaderboard rank are reported the same way a real death is); the server
+  // replies via onDeath above with gaveUp: true, which is what actually ends
+  // the run. GIVE_UP_FALLBACK_MS only covers the connection already being
+  // dead (no response is coming), in which case the run still ends locally
+  // with best-effort stats and no quest unlocks, rather than hanging forever.
+  const GIVE_UP_FALLBACK_MS = 1500;
   $("give-up").onclick = () => {
-    const stats = lastYou
-      ? { score: Math.round(lastYou.score), size: Math.round(lastYou.size), timeSurvivedSeconds: Math.round(elapsed), crowned: lastYou.crowned }
-      : {};
-    endRun({ ...stats, gaveUp: true });
+    net.giveUp();
+    setTimeout(() => {
+      if (!running) return; // onDeath already ended the run
+      const stats = lastYou
+        ? { score: Math.round(lastYou.score), size: Math.round(lastYou.size), timeSurvivedSeconds: Math.round(elapsed) }
+        : {};
+      endRun({ ...stats, gaveUp: true, quests: [] });
+    }, GIVE_UP_FALLBACK_MS);
   };
 
   let last = performance.now();
@@ -139,12 +146,23 @@ function play({ username, colour, wearCrown }) {
   }
 }
 
-async function gameOver({ eatenBy, gaveUp, score = 0, size = 0, timeSurvivedSeconds = 0, crowned = false }) {
-  const run = { score, size, timeSurvivedSeconds, crowned };
+async function gameOver({ eatenBy, gaveUp, score = 0, size = 0, timeSurvivedSeconds = 0, quests = [] }) {
+  const run = { score, size, timeSurvivedSeconds, quests };
+  const before = profile.hatsUnlocked;
   profile = recordRun(profile, run);
+  const newlyUnlocked = profile.hatsUnlocked.filter((id) => !before.includes(id));
+
   const killerName = eatenBy && (eatenBy.name ?? eatenBy.colour.charAt(0).toUpperCase() + eatenBy.colour.slice(1));
   $("gameover-title").textContent = gaveUp ? "Gave up" : killerName ? `Eaten by ${killerName}` : "Eaten!";
   $("gameover-stats").textContent = `Score ${run.score} · Size ${run.size} · ${run.timeSurvivedSeconds}s`;
+  const unlocksEl = $("gameover-unlocks");
+  if (newlyUnlocked.length) {
+    const labels = newlyUnlocked.map((id) => HATS.find((h) => h.id === id)?.label ?? id);
+    unlocksEl.textContent = `New hat${labels.length > 1 ? "s" : ""} unlocked: ${labels.join(", ")}!`;
+    unlocksEl.hidden = false;
+  } else {
+    unlocksEl.hidden = true;
+  }
   $("gameover").hidden = false;
   try {
     await showLeaderboard();
@@ -155,5 +173,5 @@ async function gameOver({ eatenBy, gaveUp, score = 0, size = 0, timeSurvivedSeco
 
 $("again").onclick = showStart;
 $("reconnect").onclick = showStart;
-initStart(profile, play);
+const start = initStart(profile, play);
 showStart();

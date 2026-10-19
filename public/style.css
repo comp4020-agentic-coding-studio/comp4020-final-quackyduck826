@@ -32,6 +32,19 @@ fieldset { border: 1px solid #3b7a8f; border-radius: 6px; display: flex; flex-wr
 }
 .swatch[aria-pressed="true"] { border-color: #fff; }
 .swatch:hover, .swatch:focus-visible { outline: none; box-shadow: 0 0 10px rgba(143, 216, 238, .6); }
+#hats-menu { width: 100%; }
+.hat-tile {
+  padding: .4rem .7rem; font-size: .85rem; font-weight: 400;
+  border: 2px solid transparent; border-radius: 6px;
+  background: rgba(232, 246, 250, .1); color: inherit; cursor: pointer;
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+.hat-tile[aria-pressed="true"] { border-color: #fff; }
+.hat-tile:not(:disabled):hover, .hat-tile:not(:disabled):focus-visible {
+  outline: none; box-shadow: 0 0 10px rgba(143, 216, 238, .6);
+}
+.hat-tile:disabled { opacity: .4; cursor: not-allowed; }
+#gameover-unlocks { color: #ffd76b; font-weight: 700; }
 .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
 a { color: #8fd8ee; transition: text-shadow .15s ease; }
 a:hover, a:focus-visible { text-shadow: 0 0 8px rgba(143, 216, 238, .6); }

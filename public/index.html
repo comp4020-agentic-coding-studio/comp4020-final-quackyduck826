@@ -17,7 +17,7 @@
     <form id="start-form">
       <label>Username <input id="username" name="username" maxlength="16" placeholder="anon" autocomplete="off"></label>
       <fieldset id="colour-picker"><legend>Colour</legend></fieldset>
-      <label id="crown-toggle" hidden><input id="wear-crown" type="checkbox"> Wear your crown</label>
+      <fieldset id="hats-menu"><legend>Hat</legend></fieldset>
       <button id="play" type="submit">Play</button>
     </form>
     <div class="panels">
@@ -39,6 +39,7 @@
     <div id="gameover" hidden>
       <h2 id="gameover-title">Eaten!</h2>
       <p id="gameover-stats"></p>
+      <p id="gameover-unlocks" hidden></p>
       <button id="again" type="button">Continue</button>
     </div>
   </section>
