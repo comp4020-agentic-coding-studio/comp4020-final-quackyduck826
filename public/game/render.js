@@ -226,6 +226,35 @@ function drawBites(ctx, dt) {
   }
 }
 
+// A small three-peak crown, drawn in the same local (unrotated-relative-to-
+// the-fish) space as the fins/eyes below, so it turns with the fish and
+// stays planted on the head rather than needing its own position tracking.
+// Centred so it sits within the head's own silhouette, reading as worn rather
+// than stuck on.
+function drawCrown(ctx, headR, noseCenterX) {
+  const cx = noseCenterX - headR * 0.15;
+  const halfW = headR * 0.8;
+  const baseX = cx - headR * 0.1;
+  const peakX = cx + headR * 0.55;
+  const midPeakX = cx + headR * 0.75;
+  const dipX = cx + headR * 0.15;
+
+  ctx.beginPath();
+  ctx.moveTo(baseX, -halfW);
+  ctx.lineTo(peakX, -halfW * 0.6);
+  ctx.lineTo(dipX, -halfW * 0.25);
+  ctx.lineTo(midPeakX, 0);
+  ctx.lineTo(dipX, halfW * 0.25);
+  ctx.lineTo(peakX, halfW * 0.6);
+  ctx.lineTo(baseX, halfW);
+  ctx.closePath();
+  ctx.fillStyle = "#ffd76b";
+  ctx.fill();
+  ctx.strokeStyle = "#8a5a00";
+  ctx.lineWidth = Math.max(1, headR * 0.05);
+  ctx.stroke();
+}
+
 // Teardrop body (round head, pointed tail-base) viewed from directly above,
 // with a two-joint tail fin that wags from `tailWag`, faster when swimming faster.
 // `outline` is "you" (thick white, the camera target), "player" (thin gold
@@ -310,6 +339,8 @@ function drawFish(ctx, e, outline) {
     ctx.arc(eyeX, side * headR * 0.5, e.size * 0.08, 0, Math.PI * 2);
     ctx.fill();
   });
+
+  if (e.crown) drawCrown(ctx, headR, noseCenterX);
 
   ctx.restore();
 

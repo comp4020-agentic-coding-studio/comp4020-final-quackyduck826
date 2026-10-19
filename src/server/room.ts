@@ -10,6 +10,7 @@ import {
   addPlayer,
   createWorld,
   eatingLocked,
+  MAX_SIZE,
   removePlayer,
   resolveEating,
   step,
@@ -44,6 +45,8 @@ interface Player extends Entity {
   score: number;
   maxSize: number;
   joinedAt: number;
+  crowned: boolean;
+  wearCrown: boolean;
 }
 interface Food {
   id: number;
@@ -98,10 +101,16 @@ export function handleConnection(socket: WebSocket): void {
     const { type } = msg as Record<string, unknown>;
 
     if (type === "join" && !conn.player) {
-      const { name, colour } = msg as Record<string, unknown>;
+      const { name, colour, wearCrown } = msg as Record<string, unknown>;
       const safeColour = typeof colour === "string" && (BOT_COLOURS as string[]).includes(colour) ? colour : BOT_COLOURS[0];
       const player = addPlayer(world, safeColour) as unknown as Player;
       player.name = (typeof name === "string" ? name.trim() : "").slice(0, 16) || "anon";
+      // `crowned` (did this player ever reach MAX_SIZE) is re-derived from
+      // gameplay each run in tick(), never trusted from the client. `wearCrown`
+      // is purely a display preference the client sends based on its own
+      // localStorage record of a past unlock — nothing mechanical depends on it.
+      player.crowned = false;
+      player.wearCrown = wearCrown === true;
       conn.player = player;
       send(socket, { type: "joined", id: player.id });
       return;
@@ -161,6 +170,11 @@ function tick(): void {
   updateBots(world, TICK_MS / 1000);
   step(world, TICK_MS / 1000);
   resolveEating(world);
+  // Sticky: once true, stays true for the rest of the run even if the player
+  // later shrinks back down (SHRINK_RATE applies above SHRINK_SIZE).
+  for (const p of world.players) {
+    if (p.size >= MAX_SIZE) p.crowned = true;
+  }
   broadcast();
 }
 
@@ -169,6 +183,12 @@ function publicPlayer(p: Player) {
     id: p.id, x: p.x, y: p.y, angle: p.angle, tailWag: p.tailWag, size: p.size,
     colour: p.colour, name: p.name, score: p.score, locked: eatingLocked(p),
     dashTimer: p.dashTimer, dashPenaltyTimer: p.dashPenaltyTimer, isPlayer: true,
+    // `crown` is what every client renders (only if actually earned *and*
+    // chosen to be worn); `crowned` is the raw unlock state, sent so the
+    // owning client can persist it to localStorage even if they chose not to
+    // wear it this run.
+    crown: p.crowned && p.wearCrown,
+    crowned: p.crowned,
   };
 }
 
@@ -193,7 +213,7 @@ function broadcast(): void {
     if (died && conn.player) {
       const { score, timeSurvivedSeconds } = finalStats(conn.player);
       submitRun(conn.player);
-      send(conn.socket, { type: "death", eatenBy: died.by, score, size: score, timeSurvivedSeconds });
+      send(conn.socket, { type: "death", eatenBy: died.by, score, size: score, timeSurvivedSeconds, crowned: conn.player.crowned });
       conn.player = null;
     }
   }

@@ -9,14 +9,14 @@ function wsUrl() {
   return `${proto}//${location.host}/ws`;
 }
 
-export function connect({ name, colour, onWelcome, onJoined, onDeath, onClose, onEvents }) {
+export function connect({ name, colour, wearCrown, onWelcome, onJoined, onDeath, onClose, onEvents }) {
   const socket = new WebSocket(wsUrl());
   const buffer = []; // ordered snapshots, each {t, you, players, bots, food, events}
   let world = 2000;
   let palette = [];
 
   socket.addEventListener("open", () => {
-    socket.send(JSON.stringify({ type: "join", name, colour }));
+    socket.send(JSON.stringify({ type: "join", name, colour, wearCrown: !!wearCrown }));
   });
 
   socket.addEventListener("message", (ev) => {
@@ -37,7 +37,7 @@ export function connect({ name, colour, onWelcome, onJoined, onDeath, onClose, o
       // one-off event like a bite effect plays exactly once.
       if (msg.events?.length) onEvents?.(msg.events);
     } else if (msg.type === "death") {
-      onDeath?.({ eatenBy: msg.eatenBy, score: msg.score, size: msg.size, timeSurvivedSeconds: msg.timeSurvivedSeconds });
+      onDeath?.({ eatenBy: msg.eatenBy, score: msg.score, size: msg.size, timeSurvivedSeconds: msg.timeSurvivedSeconds, crowned: msg.crowned });
     }
   });
 

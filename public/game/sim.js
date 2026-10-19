@@ -12,8 +12,10 @@ const FOOD_GROWTH = 1;
 const EAT_MARGIN = 1.1;
 const FOOD_COUNT = 70;
 const BASE_SPEED = 160;
-// Past this score an entity can only eat other players (bots don't count).
-export const EAT_LOCK_SCORE = 3000;
+// The hard ceiling on size: growth stops here. Also doubles as the endgame
+// threshold — once a player has ever reached it, they're eat-locked (can only
+// eat other players, bots don't count) for the rest of the run.
+export const MAX_SIZE = 400;
 const BIG_BOTS = 3;
 const BIG_BOT_MIN = 40;
 const BIG_BOT_RANGE = 30; // big bots spawn at BIG_BOT_MIN..BIG_BOT_MIN+BIG_BOT_RANGE
@@ -139,7 +141,7 @@ export function respawnBot(state, { colour, big }) {
   state.bots.push(bot);
 }
 
-export const eatingLocked = (entity) => entity.isPlayer && entity.score >= EAT_LOCK_SCORE;
+export const eatingLocked = (entity) => entity.isPlayer && entity.score >= MAX_SIZE;
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
@@ -166,7 +168,7 @@ export function resolveEating(state) {
     if (e.size > KELP_EAT_SIZE) continue;
     state.food = state.food.filter((f) => {
       if (dist(e, f) < e.size) {
-        e.size += FOOD_GROWTH;
+        e.size = Math.min(MAX_SIZE, e.size + FOOD_GROWTH);
         return false;
       }
       return true;
@@ -180,7 +182,7 @@ export function resolveEating(state) {
       // A locked attacker may only eat other players; bots aren't players.
       if (eatingLocked(a) && !d.isPlayer) continue;
       if (a.size > d.size * EAT_MARGIN && dist(a, d) < a.size - d.size * 0.3 && bitingWithHead(a, d)) {
-        a.size += d.size * 0.4;
+        a.size = Math.min(MAX_SIZE, a.size + d.size * 0.4);
         dead.add(d);
         state.events.push({ type: "eaten", x: d.x, y: d.y, victim: d.id, victimIsPlayer: !!d.isPlayer, by: { name: a.name, colour: a.colour } });
       }

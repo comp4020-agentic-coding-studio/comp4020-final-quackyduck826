@@ -4,7 +4,7 @@ export const COLOURS = {
   sky: "#4cc9f0", violet: "#a78bfa", pink: "#f472b6", slate: "#94a3b8",
 };
 
-const blank = () => ({ username: "", colour: "coral", personalBest: null });
+const blank = () => ({ username: "", colour: "coral", personalBest: null, crownUnlocked: false, wantsCrown: true });
 
 export function loadProfile() {
   try {
@@ -26,7 +26,10 @@ export function recordRun(profile, run) {
     size: Math.max(prev.size, run.size),
     timeSurvivedSeconds: Math.max(prev.timeSurvivedSeconds, run.timeSurvivedSeconds),
   };
-  const next = { ...profile, personalBest };
+  // Once unlocked, stays unlocked: the server re-derives `crowned` from
+  // gameplay each run, so this only ever turns true, never back off.
+  const crownUnlocked = profile.crownUnlocked || !!run.crowned;
+  const next = { ...profile, personalBest, crownUnlocked };
   saveProfile(next);
   return next;
 }

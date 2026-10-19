@@ -1,12 +1,24 @@
 import { COLOURS } from "./profile.js";
 import { getLeaderboard } from "./leaderboard.js";
 
+// Reflects the profile's crown state onto the toggle. Called once at setup
+// and again each time the start screen is shown, since `crownUnlocked` can
+// flip true mid-session (a run just now reached MAX_SIZE) after the form was
+// already built.
+export function refreshCrownToggle(profile) {
+  document.getElementById("crown-toggle").hidden = !profile.crownUnlocked;
+  document.getElementById("wear-crown").checked = profile.wantsCrown;
+}
+
 export function initStart(profile, onPlay) {
   const form = document.getElementById("start-form");
   const input = document.getElementById("username");
   const picker = document.getElementById("colour-picker");
+  const crownToggle = document.getElementById("crown-toggle");
+  const crownCheckbox = document.getElementById("wear-crown");
   let colour = profile.colour;
   input.value = profile.username;
+  refreshCrownToggle(profile);
 
   for (const name of Object.keys(COLOURS)) {
     const b = document.createElement("button");
@@ -24,7 +36,11 @@ export function initStart(profile, onPlay) {
   }
   form.onsubmit = (e) => {
     e.preventDefault();
-    onPlay({ username: input.value.trim(), colour });
+    // Read live DOM state (kept current by refreshCrownToggle on every
+    // showStart) rather than the `profile` this closure captured at setup —
+    // that object gets replaced, not mutated, after each run, so checking its
+    // `crownUnlocked` here would stay stuck at whatever it was at page load.
+    onPlay({ username: input.value.trim(), colour, wearCrown: !crownToggle.hidden && crownCheckbox.checked });
   };
 }
 

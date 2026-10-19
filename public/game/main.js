@@ -4,7 +4,7 @@ import { connect, interpolate } from "./net.js";
 import { loadProfile, recordRun, saveProfile } from "./profile.js";
 import { render, triggerBite } from "./render.js";
 import { DASH_DURATION, DASH_PENALTY_DURATION } from "./sim.js";
-import { initStart, showBest, showLeaderboard } from "./start.js";
+import { initStart, refreshCrownToggle, showBest, showLeaderboard } from "./start.js";
 import { startPuddleBackground } from "./puddle-bg.js";
 
 const $ = (id) => document.getElementById(id);
@@ -33,13 +33,18 @@ function showStart() {
   $("start").hidden = false;
   showBest(profile);
   showLeaderboard();
+  refreshCrownToggle(profile);
   if (!stopPuddleBg) stopPuddleBg = startPuddleBackground();
 }
 
 // The server is authoritative: this client's own role is to send input and
 // render whatever the latest interpolated snapshot says, not to simulate.
-function play({ username, colour }) {
-  profile = { ...profile, username, colour };
+function play({ username, colour, wearCrown }) {
+  // Only remember the toggle's own state once it's actually unlocked and
+  // shown; before that, `wearCrown` is always false (the toggle is hidden and
+  // start.js never sends it true) and shouldn't stomp the pre-unlock default.
+  const wantsCrown = profile.crownUnlocked ? !!wearCrown : profile.wantsCrown;
+  profile = { ...profile, username, colour, wantsCrown };
   saveProfile(profile);
   $("start").hidden = true;
   $("game").hidden = false;
@@ -61,6 +66,7 @@ function play({ username, colour }) {
   const net = connect({
     name: profile.username.trim() || "anon",
     colour,
+    wearCrown,
     onJoined: (id) => { youId = id; },
     onDeath: (stats) => endRun(stats),
     // Only an *unexpected* close (the socket dropping on its own, not after a
@@ -76,7 +82,7 @@ function play({ username, colour }) {
 
   $("give-up").onclick = () => {
     const stats = lastYou
-      ? { score: Math.round(lastYou.score), size: Math.round(lastYou.size), timeSurvivedSeconds: Math.round(elapsed) }
+      ? { score: Math.round(lastYou.score), size: Math.round(lastYou.size), timeSurvivedSeconds: Math.round(elapsed), crowned: lastYou.crowned }
       : {};
     endRun({ ...stats, gaveUp: true });
   };
@@ -133,8 +139,8 @@ function play({ username, colour }) {
   }
 }
 
-async function gameOver({ eatenBy, gaveUp, score = 0, size = 0, timeSurvivedSeconds = 0 }) {
-  const run = { score, size, timeSurvivedSeconds };
+async function gameOver({ eatenBy, gaveUp, score = 0, size = 0, timeSurvivedSeconds = 0, crowned = false }) {
+  const run = { score, size, timeSurvivedSeconds, crowned };
   profile = recordRun(profile, run);
   const killerName = eatenBy && (eatenBy.name ?? eatenBy.colour.charAt(0).toUpperCase() + eatenBy.colour.slice(1));
   $("gameover-title").textContent = gaveUp ? "Gave up" : killerName ? `Eaten by ${killerName}` : "Eaten!";
