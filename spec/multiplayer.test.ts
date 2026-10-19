@@ -57,3 +57,25 @@ it("sees another player join and leave the shared world", async () => {
 
   a.socket.close();
 });
+
+it("reports quest results in the shape a death does when a player gives up", async () => {
+  const socket = new WebSocket(wsUrl);
+  const death = new Promise<any>((resolve, reject) => {
+    socket.addEventListener("open", () => socket.send(JSON.stringify({ type: "join", name: "spec-giveup", colour: "teal" })));
+    socket.addEventListener("message", (ev) => {
+      const msg = JSON.parse(ev.data as string);
+      if (msg.type === "joined") socket.send(JSON.stringify({ type: "giveUp" }));
+      if (msg.type === "death") resolve(msg);
+    });
+    socket.addEventListener("error", reject);
+  });
+
+  const msg = await death;
+  expect(msg.gaveUp).toBe(true);
+  expect(msg.eatenBy).toBeNull();
+  expect(typeof msg.score).toBe("number");
+  expect(typeof msg.timeSurvivedSeconds).toBe("number");
+  expect(Array.isArray(msg.quests)).toBe(true);
+
+  socket.close();
+});

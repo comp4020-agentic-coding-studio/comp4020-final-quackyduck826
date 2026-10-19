@@ -23,6 +23,16 @@ export const QUEST_IDS = [
 
 export type QuestId = (typeof QUEST_IDS)[number];
 
+// Every hat a player could conceivably wear: every server-checkable quest,
+// plus "veteran" (the one client-only quest, tallied in profile.js). Used to
+// validate a join message's wornHat the same way colour is already
+// whitelisted — this is a display-only whitelist, not an unlock check: the
+// server never re-verifies a player actually earned the hat they claim to be
+// wearing, since nothing mechanical depends on it (same trust level as
+// colour). Each client enforces that for itself via profile.hatsUnlocked.
+export const HAT_IDS = [...QUEST_IDS, "veteran"] as const;
+export type HatId = (typeof HAT_IDS)[number];
+
 export const THRESHOLDS = {
   survivalistSeconds: 180, // 3 minutes — well past typical early-death timescales
   gluttonCount: 15, // sustained predation, not an incidental kill or two

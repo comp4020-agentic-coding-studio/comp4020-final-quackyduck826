@@ -6,7 +6,7 @@
 import type { WebSocket } from "ws";
 import { updateBots } from "../../public/game/bots.js";
 import { COLOURS as COLOUR_NAMES, submit } from "./leaderboard.ts";
-import { THRESHOLDS } from "./quests.ts";
+import { checkQuests, HAT_IDS, THRESHOLDS, type HatId, type QuestTallies } from "./quests.ts";
 import {
   addPlayer,
   createWorld,
@@ -47,7 +47,12 @@ interface Player extends Entity {
   maxSize: number;
   joinedAt: number;
   crowned: boolean;
-  wearCrown: boolean;
+  // Which hat this player chose to wear this run, whitelisted against the
+  // known hat ids the same way colour is whitelisted; null = none worn.
+  // Rendered from the start of the run, not gated on re-earning it within
+  // the run — a deliberate simplification over the crown's old behaviour,
+  // since wearing a hat is purely cosmetic (see publicPlayer()).
+  wornHat: HatId | null;
   // Quest tallies, accumulated over the run and read once at the end
   // (death or give-up) by checkQuests() — see quests.ts.
   entitiesEaten: number;
@@ -120,16 +125,16 @@ export function handleConnection(socket: WebSocket): void {
     const { type } = msg as Record<string, unknown>;
 
     if (type === "join" && !conn.player) {
-      const { name, colour, wearCrown } = msg as Record<string, unknown>;
+      const { name, colour, wornHat } = msg as Record<string, unknown>;
       const safeColour = typeof colour === "string" && (BOT_COLOURS as string[]).includes(colour) ? colour : BOT_COLOURS[0];
       const player = addPlayer(world, safeColour) as unknown as Player;
       player.name = (typeof name === "string" ? name.trim() : "").slice(0, 16) || "anon";
       // `crowned` (did this player ever reach MAX_SIZE) is re-derived from
-      // gameplay each run in tick(), never trusted from the client. `wearCrown`
+      // gameplay each run in tick(), never trusted from the client. `wornHat`
       // is purely a display preference the client sends based on its own
-      // localStorage record of a past unlock — nothing mechanical depends on it.
+      // localStorage record of past unlocks — nothing mechanical depends on it.
       player.crowned = false;
-      player.wearCrown = wearCrown === true;
+      player.wornHat = typeof wornHat === "string" && (HAT_IDS as readonly string[]).includes(wornHat) ? (wornHat as HatId) : null;
       player.entitiesEaten = 0;
       player.foodEaten = 0;
       player.dashCount = 0;
@@ -139,6 +144,11 @@ export function handleConnection(socket: WebSocket): void {
       player.sinceSizeSample = 0;
       conn.player = player;
       send(socket, { type: "joined", id: player.id });
+      return;
+    }
+
+    if (type === "giveUp" && conn.player) {
+      finishRun(conn, conn.player, { eatenBy: null, gaveUp: true }).catch(() => {});
       return;
     }
 
@@ -161,8 +171,11 @@ export function handleConnection(socket: WebSocket): void {
 
   const cleanup = (): void => {
     connections.delete(socket);
+    // If conn.player is already null, a death or give-up already ran
+    // finishRun() for this connection (it nulls conn.player synchronously,
+    // before its first await) — nothing left to do here.
     if (conn.player) {
-      submitRun(conn.player);
+      submitScoreOnly(conn.player);
       removePlayer(world, conn.player);
     }
   };
@@ -172,16 +185,47 @@ export function handleConnection(socket: WebSocket): void {
 
 // The server holds the only trustworthy score (maxSize), so it submits to the
 // persistent leaderboard itself once a run ends, rather than asking the
-// client to report back a number it could have tampered with. Returns the
-// final stats so the caller can also tell the client (for its local
-// personal-best panel), without computing them twice.
+// client to report back a number it could have tampered with.
 function finalStats(p: Player) {
   return { score: Math.round(p.maxSize), timeSurvivedSeconds: Math.round(world.elapsed - p.joinedAt) };
 }
 
-function submitRun(p: Player): void {
+// Plain disconnect (network drop, tab closed) with no give-up or death
+// message in flight: there's no live socket to report quest results to, so
+// this just submits the score — same as before quests existed. Used only by
+// cleanup(); death() and give-up both go through finishRun() below instead,
+// which also nulls conn.player, so by the time cleanup() runs after either of
+// those conn.player is already null and this is skipped (see its own guard).
+function submitScoreOnly(p: Player): void {
   const { score, timeSurvivedSeconds } = finalStats(p);
   submit({ name: p.name, score, colour: p.colour, timeSurvivedSeconds }).catch(() => {});
+}
+
+// The one place a run actually ends with something to tell the client:
+// a real death (eatenBy set) or a voluntary give-up (gaveUp: true). Nulls
+// conn.player synchronously, before the first await, so a socket-close
+// racing in behind this (the client closes its own socket right after
+// getting the death message) can't also submit via cleanup()'s guard.
+async function finishRun(conn: Connection, p: Player, { eatenBy, gaveUp }: { eatenBy: { name: string; colour: string } | null; gaveUp: boolean }): Promise<void> {
+  conn.player = null;
+  // A death-triggered call finds `p` already absent from world.players
+  // (resolveEating() removes it the same tick the "eaten" event fires), so
+  // this is a no-op there; for give-up, `p` is still very much in the world,
+  // and removing it doesn't need to wait on the leaderboard submission below.
+  removePlayer(world, p);
+  const { score, timeSurvivedSeconds } = finalStats(p);
+  const { rank } = await submit({ name: p.name, score, colour: p.colour, timeSurvivedSeconds });
+  const tallies: QuestTallies = {
+    crowned: p.crowned,
+    timeSurvivedSeconds,
+    entitiesEaten: p.entitiesEaten,
+    foodEaten: p.foodEaten,
+    dashCount: p.dashCount,
+    ateAPlayer: p.ateAPlayer,
+    ateGiant: p.ateGiant,
+    leaderboardRank: rank,
+  };
+  send(conn.socket, { type: "death", eatenBy, gaveUp, score, size: score, timeSurvivedSeconds, quests: checkQuests(tallies) });
 }
 
 function tick(): void {
@@ -242,12 +286,11 @@ function publicPlayer(p: Player) {
     id: p.id, x: p.x, y: p.y, angle: p.angle, tailWag: p.tailWag, size: p.size,
     colour: p.colour, name: p.name, score: p.score, locked: eatingLocked(p),
     dashTimer: p.dashTimer, dashPenaltyTimer: p.dashPenaltyTimer, isPlayer: true,
-    // `crown` is what every client renders (only if actually earned *and*
-    // chosen to be worn); `crowned` is the raw unlock state, sent so the
-    // owning client can persist it to localStorage even if they chose not to
-    // wear it this run.
-    crown: p.crowned && p.wearCrown,
-    crowned: p.crowned,
+    // Echoed from the start of the run, not gated on re-earning it within
+    // the run (see the wornHat field comment above) — every connected
+    // client renders whatever hat this player chose, visible to everyone,
+    // not just the wearer.
+    hat: p.wornHat,
   };
 }
 
@@ -269,11 +312,8 @@ function broadcast(): void {
     send(conn.socket, { type: "snapshot", t: world.elapsed, you, players, bots, food, events });
 
     const died = conn.player && events.find((e) => e.type === "eaten" && e.victim === conn.player!.id);
-    if (died && conn.player) {
-      const { score, timeSurvivedSeconds } = finalStats(conn.player);
-      submitRun(conn.player);
-      send(conn.socket, { type: "death", eatenBy: died.by, score, size: score, timeSurvivedSeconds, crowned: conn.player.crowned });
-      conn.player = null;
+    if (died && conn.player && died.type === "eaten") {
+      finishRun(conn, conn.player, { eatenBy: died.by, gaveUp: false }).catch(() => {});
     }
   }
 }

@@ -9,14 +9,14 @@ function wsUrl() {
   return `${proto}//${location.host}/ws`;
 }
 
-export function connect({ name, colour, wearCrown, onWelcome, onJoined, onDeath, onClose, onEvents }) {
+export function connect({ name, colour, wornHat, onWelcome, onJoined, onDeath, onClose, onEvents }) {
   const socket = new WebSocket(wsUrl());
   const buffer = []; // ordered snapshots, each {t, you, players, bots, food, events}
   let world = 2000;
   let palette = [];
 
   socket.addEventListener("open", () => {
-    socket.send(JSON.stringify({ type: "join", name, colour, wearCrown: !!wearCrown }));
+    socket.send(JSON.stringify({ type: "join", name, colour, wornHat: wornHat ?? null }));
   });
 
   socket.addEventListener("message", (ev) => {
@@ -37,7 +37,10 @@ export function connect({ name, colour, wearCrown, onWelcome, onJoined, onDeath,
       // one-off event like a bite effect plays exactly once.
       if (msg.events?.length) onEvents?.(msg.events);
     } else if (msg.type === "death") {
-      onDeath?.({ eatenBy: msg.eatenBy, score: msg.score, size: msg.size, timeSurvivedSeconds: msg.timeSurvivedSeconds, crowned: msg.crowned });
+      onDeath?.({
+        eatenBy: msg.eatenBy, gaveUp: msg.gaveUp, score: msg.score, size: msg.size,
+        timeSurvivedSeconds: msg.timeSurvivedSeconds, quests: msg.quests ?? [],
+      });
     }
   });
 
@@ -48,6 +51,15 @@ export function connect({ name, colour, wearCrown, onWelcome, onJoined, onDeath,
     lastHeading = heading;
     if (socket.readyState !== WebSocket.OPEN) return;
     socket.send(JSON.stringify({ type: "input", heading, dash }));
+  }
+
+  // Asks the server to end this run voluntarily and report final stats and
+  // quest unlocks the same way a real death does — see onDeath above. The
+  // caller is responsible for a timeout fallback if the server never answers
+  // (e.g. the connection is already dead), since this function doesn't wait.
+  function giveUp() {
+    if (socket.readyState !== WebSocket.OPEN) return;
+    socket.send(JSON.stringify({ type: "giveUp" }));
   }
 
   // Returns an interpolated view of the world at "now minus RENDER_DELAY", or
@@ -69,7 +81,7 @@ export function connect({ name, colour, wearCrown, onWelcome, onJoined, onDeath,
     return { older, newer, frac, latest: buffer[buffer.length - 1] };
   }
 
-  return { sendInput, sample, close: () => socket.close(), get lastHeading() { return lastHeading; } };
+  return { sendInput, giveUp, sample, close: () => socket.close(), get lastHeading() { return lastHeading; } };
 }
 
 const lerp = (a, b, t) => a + (b - a) * t;
