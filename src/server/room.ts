@@ -4,6 +4,7 @@
 // `step`/`resolveEating`/`updateBots` functions the single-player client used
 // to drive itself, now ticking once for everyone instead of once per browser.
 import type { WebSocket } from "ws";
+import { logAction } from "./actionLog.ts";
 import { updateBots } from "../../public/game/bots.js";
 import { COLOURS as COLOUR_NAMES, submit } from "./leaderboard.ts";
 import { checkQuests, HAT_IDS, THRESHOLDS, type HatId, type QuestTallies } from "./quests.ts";
@@ -143,6 +144,7 @@ export function handleConnection(socket: WebSocket): void {
       player.sizeHistory = [player.size];
       player.sinceSizeSample = 0;
       conn.player = player;
+      logAction({ type: "join", player: player.id, name: player.name, colour: player.colour });
       send(socket, { type: "joined", id: player.id });
       return;
     }
@@ -175,6 +177,7 @@ export function handleConnection(socket: WebSocket): void {
     // finishRun() for this connection (it nulls conn.player synchronously,
     // before its first await) — nothing left to do here.
     if (conn.player) {
+      logAction({ type: "disconnect", player: conn.player.id, name: conn.player.name });
       submitScoreOnly(conn.player);
       removePlayer(world, conn.player);
     }
@@ -213,6 +216,14 @@ async function finishRun(conn: Connection, p: Player, { eatenBy, gaveUp }: { eat
   // this is a no-op there; for give-up, `p` is still very much in the world,
   // and removing it doesn't need to wait on the leaderboard submission below.
   removePlayer(world, p);
+  logAction({
+    type: gaveUp ? "giveUp" : "death",
+    player: p.id,
+    name: p.name,
+    eatenBy: eatenBy ? { name: eatenBy.name, colour: eatenBy.colour } : null,
+    finalSize: Math.round(p.maxSize),
+    timeSurvivedSeconds: Math.round(world.elapsed - p.joinedAt),
+  });
   const { score, timeSurvivedSeconds } = finalStats(p);
   const { rank } = await submit({ name: p.name, score, colour: p.colour, timeSurvivedSeconds });
   const tallies: QuestTallies = {
@@ -253,7 +264,19 @@ function tick(): void {
       const attacker = byId.get(e.by.id);
       if (!attacker) continue;
       attacker.entitiesEaten++;
-      if (e.victimIsPlayer) attacker.ateAPlayer = true;
+      if (e.victimIsPlayer) {
+        attacker.ateAPlayer = true;
+        // Only player-eats-player is logged here; food/bot eats would flood
+        // the stream at tick rate and aren't what the crit narration needs.
+        logAction({
+          type: "eat",
+          player: attacker.id,
+          name: attacker.name,
+          victim: e.victim,
+          victimSize: Math.round(e.victimSize),
+          newSize: Math.round(attacker.size),
+        });
+      }
       // Giant Slayer: victim is substantial on its own (the floor), and at
       // least GIANT_SLAYER_MULTIPLIER times the attacker's own size from
       // GIANT_SLAYER_WINDOW_SECONDS ago (sizeHistory[0], the oldest sample
