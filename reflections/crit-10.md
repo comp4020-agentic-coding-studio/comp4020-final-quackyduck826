@@ -1,0 +1,5 @@
+# Crit 10 reflection
+
+The breakthrough was realising this crit asked almost nothing of the architecture and almost everything of observability. Multiplayer already distinguished players server-side from crit 9 — every connection had always owned exactly one player, cleanly. What was missing wasn't a capability, it was a record of that capability: nothing wrote down what the server already knew. Adding `actionLog.ts` felt less like building a feature and more like finally pointing a camera at a room that had been running the whole time.
+
+That shifted something about how I think about "done." I'd been treating the multiplayer work as finished once it worked for two players in the browser. This crit's brief made the gap obvious: working isn't the same as demonstrable, and a system that can't explain itself from the outside (logs, in this case, not UI) is harder to trust and harder to debug later, not just harder to grade. Going forward I want to build the narration in alongside the feature, not bolt it on when someone asks to see it — the same instinct that made me write the leaderboard to the Fly volume from the start rather than after a redeploy wiped it once.
