@@ -1,56 +1,231 @@
-:root { color-scheme: dark; font-family: system-ui, sans-serif; }
-body { margin: 0; background: #06222f; color: #e8f6fa; min-height: 100vh; }
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  --cyan: #52f1ff;
+  --pink: #ff4fd8;
+  --amber: #ffb347;
+  --lime: #b6ff3c;
+  --ink: #06222f;
+  --panel: rgba(232, 246, 250, .08);
+  --panel-border: rgba(82, 241, 255, .35);
+}
+body { margin: 0; background: var(--ink); color: #e8f6fa; min-height: 100vh; }
 [hidden] { display: none !important; }
-.screen { max-width: 640px; margin: 0 auto; padding: 1.5rem; }
 h1, h2 { font-family: 'Audiowide', system-ui, sans-serif; }
 #start, #start input, #start button { font-family: 'Chakra Petch', system-ui, sans-serif; }
-h1 {
-  font-size: 3rem; margin: 0; letter-spacing: .06em;
-  text-shadow: 0 0 12px rgba(143, 216, 238, .55), 0 0 32px rgba(59, 122, 143, .5);
+
+/* ---------- start screen shell ---------- */
+#start {
+  position: relative;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 3rem;
+  overflow: hidden;
+  isolation: isolate;
 }
-.tag { opacity: .8; }
-form { display: grid; gap: 1rem; margin: 1rem 0; }
+
+/* Faint neon perspective grid receding toward the horizon, purely decorative
+   behind the puddle ripples — gives the loud synth/arcade read without
+   fighting the ripple animation for attention. */
+.grid-floor {
+  position: fixed; left: 0; right: 0; bottom: 0; height: 45vh;
+  z-index: -1; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(82, 241, 255, .22) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(82, 241, 255, .22) 1px, transparent 1px);
+  background-size: 48px 48px;
+  transform: perspective(300px) rotateX(55deg);
+  transform-origin: bottom;
+  mask-image: linear-gradient(to top, black, transparent);
+}
+.glow {
+  position: fixed; z-index: -1; pointer-events: none;
+  width: 60vmax; height: 60vmax; border-radius: 50%; filter: blur(80px); opacity: .25;
+}
+.glow-cyan { top: -20vmax; left: -15vmax; background: var(--cyan); }
+.glow-pink { bottom: -25vmax; right: -20vmax; background: var(--pink); }
+
+.hero { text-align: center; margin-bottom: 2rem; }
+.title {
+  font-size: clamp(2.6rem, 8vw, 4.2rem); margin: 0; letter-spacing: .06em;
+  background: linear-gradient(90deg, var(--cyan), var(--pink) 60%, var(--amber));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: 0 0 30px rgba(82, 241, 255, .45);
+  animation: title-shift 6s ease-in-out infinite alternate;
+}
+.title-dot { color: var(--amber); -webkit-text-fill-color: var(--amber); }
+@keyframes title-shift {
+  from { filter: hue-rotate(0deg) drop-shadow(0 0 14px rgba(82, 241, 255, .5)); }
+  to   { filter: hue-rotate(25deg) drop-shadow(0 0 22px rgba(255, 79, 216, .5)); }
+}
+.tag { opacity: .85; font-size: 1.05rem; margin: .4rem 0 0; letter-spacing: .02em; }
+
+.start-grid {
+  display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 1.5rem; align-items: start;
+}
+@media (max-width: 700px) {
+  .start-grid { grid-template-columns: 1fr; }
+}
+
+.play-card, .panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  padding: 1.25rem;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 0 24px rgba(82, 241, 255, .08), inset 0 0 0 1px rgba(255, 255, 255, .03);
+}
+.play-card { display: grid; gap: 1.1rem; }
+.field { display: grid; gap: .4rem; }
+.field > input { width: 100%; box-sizing: border-box; }
+
 input {
-  padding: .6rem; font-size: 1rem; border-radius: 6px; border: 1px solid #3b7a8f;
+  padding: .65rem .8rem; font-size: 1rem; border-radius: 8px; border: 1px solid #3b7a8f;
   background: #0a3548; color: inherit; transition: box-shadow .15s ease, border-color .15s ease;
 }
 input:focus {
-  outline: none; border-color: #8fd8ee; box-shadow: 0 0 0 3px rgba(143, 216, 238, .25);
+  outline: none; border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(82, 241, 255, .25);
 }
+
+.play-btn {
+  justify-self: stretch; position: relative; overflow: hidden;
+  padding: .9rem 1.2rem; font-size: 1.25rem; font-weight: 700; letter-spacing: .04em;
+  border: 0; border-radius: 10px; cursor: pointer; color: #06222f;
+  background: linear-gradient(90deg, var(--lime), var(--amber), var(--pink));
+  background-size: 220% 100%;
+  box-shadow: 0 0 22px rgba(255, 179, 71, .4);
+  transition: transform .15s ease, box-shadow .15s ease, background-position .4s ease;
+}
+.play-btn span { position: relative; z-index: 1; }
+.play-btn:hover, .play-btn:focus-visible {
+  outline: none; transform: translateY(-2px) scale(1.02);
+  background-position: 100% 0;
+  box-shadow: 0 0 10px rgba(255, 79, 216, .55), 0 0 36px rgba(255, 179, 71, .55);
+}
+.play-btn:active { transform: translateY(0) scale(.99); }
+
 button {
-  padding: .7rem 1.2rem; font-size: 1.1rem; border: 0; border-radius: 6px; background: #ffb347;
-  cursor: pointer; font-weight: 700; transition: box-shadow .15s ease, transform .15s ease;
+  font-family: inherit;
 }
-button:hover, button:focus-visible {
-  outline: none; transform: translateY(-1px);
-  box-shadow: 0 0 0 3px rgba(255, 179, 71, .35), 0 0 18px rgba(255, 179, 71, .5);
+
+fieldset {
+  border: 1px solid var(--panel-border); border-radius: 10px;
+  padding: .75rem; margin: 0;
+  /* Fieldsets default to box-sizing: content-box and a min-width of their
+     content's min-content, not 0 — as a grid item here that meant the grid
+     track's assigned width became the *content* width, with padding/border
+     added on top, so the fieldset spilled out past the card's edge, over the
+     sidebar next to it. */
+  box-sizing: border-box; min-width: 0;
 }
-fieldset { border: 1px solid #3b7a8f; border-radius: 6px; display: flex; flex-wrap: wrap; gap: .5rem; }
+legend {
+  grid-column: 1 / -1; padding: 0 .4rem;
+  display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap;
+}
+.legend-hint { font-size: .72rem; opacity: .6; font-weight: 400; }
+
+/* Fixed 4-across grid rather than flex-wrap, so swatches line up in neat
+   rows regardless of how many colours there are. Columns are sized to the
+   swatch itself (not 1fr, which stretches each column to a quarter of the
+   box and leaves the circle centred inside a lot of unused track width) so
+   the gap values below are the actual, full spacing between circles. The
+   whole row is then centred as a group with justify-content. The second row
+   (nth-of-type(n+5)) is nudged right and up by part of a column's pitch so
+   its circles nestle diagonally into the gaps of the row above instead of
+   sitting in a plain grid. */
+#colour-picker {
+  display: grid; grid-template-columns: repeat(4, max-content);
+  justify-content: center; column-gap: .08rem; row-gap: .52rem;
+  padding-top: .3rem;
+}
 .swatch {
-  width: 2rem; height: 2rem; border-radius: 50%; border: 3px solid transparent; cursor: pointer;
-  padding: 0; transition: box-shadow .15s ease, border-color .15s ease;
+  --stagger-x: 0px; --stagger-y: 0px; --scale: 1;
+  width: 1.44rem; aspect-ratio: 1;
+  border-radius: 50%; border: 3px solid transparent; cursor: pointer;
+  padding: 0; transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease;
+  transform: translate(var(--stagger-x), var(--stagger-y)) scale(var(--scale));
 }
-.swatch[aria-pressed="true"] { border-color: #fff; }
-.swatch:hover, .swatch:focus-visible { outline: none; box-shadow: 0 0 10px rgba(143, 216, 238, .6); }
-#hats-menu { width: 100%; }
+/* nth-of-type, not nth-child: the fieldset's <legend> is also a child,
+   which would otherwise throw the row split off by one. */
+.swatch:nth-of-type(n+5) { --stagger-x: 1rem; --stagger-y: -.44rem; }
+.swatch[aria-pressed="true"] { border-color: #fff; --scale: 1.1; }
+.swatch:hover, .swatch:focus-visible { outline: none; box-shadow: 0 0 12px rgba(82, 241, 255, .7); --scale: 1.08; }
+
+/* Fixed 2-across grid so every tile (including "None") is the same width
+   all the way down the list, instead of flex-wrap sizing each to its label. */
+#hats-menu {
+  width: 100%; display: grid; grid-template-columns: repeat(2, 1fr); gap: .6rem;
+}
 .hat-tile {
+  position: relative;
   display: flex; flex-direction: column; align-items: center; gap: .2rem;
-  padding: .4rem .6rem; font-size: .8rem; font-weight: 400;
-  border: 2px solid transparent; border-radius: 6px;
-  background: rgba(232, 246, 250, .1); color: inherit; cursor: pointer;
-  transition: box-shadow .15s ease, border-color .15s ease;
+  padding: .5rem .7rem; font-size: .8rem; font-weight: 600;
+  border: 2px solid transparent; border-radius: 10px;
+  background: rgba(232, 246, 250, .08); color: inherit; cursor: pointer;
+  transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease, background .15s ease;
 }
 .hat-tile-icon { width: 2.5rem; height: 2.5rem; }
-.hat-tile[aria-pressed="true"] { border-color: #fff; }
+.hat-tile[aria-pressed="true"] { border-color: var(--lime); background: rgba(182, 255, 60, .12); }
 .hat-tile:not(:disabled):hover, .hat-tile:not(:disabled):focus-visible {
-  outline: none; box-shadow: 0 0 10px rgba(143, 216, 238, .6);
+  outline: none; border-color: var(--cyan); box-shadow: 0 0 14px rgba(82, 241, 255, .6);
+  transform: translateY(-2px);
+  /* The transform above gives the tile its own stacking context, but with
+     z-index left at auto it still painted below later tiles in the grid
+     (DOM order), so its tooltip got drawn under the row beneath it. */
+  z-index: 20;
 }
-.hat-tile:disabled { opacity: .4; cursor: not-allowed; }
+.hat-tile:disabled { opacity: .45; cursor: not-allowed; }
+.hat-tile:disabled:hover { box-shadow: 0 0 10px rgba(255, 79, 216, .35); border-color: var(--pink); }
+
+/* Custom tooltip for a hat's unlock condition, shown on hover/focus for both
+   locked and unlocked tiles (native `title` was swapped for data-tip in
+   start.js so this can match the rest of the page instead of the OS style). */
+/* Anchored below the tile, not above — these sit in a wrapped grid, so a
+   tile in the top row has no room above it before the legend. */
+.hat-tile[data-tip] { overflow: visible; }
+.hat-tile[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute; top: calc(100% + .5rem); left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  width: max-content; max-width: 11rem;
+  padding: .45rem .6rem; border-radius: 8px;
+  /* Fully opaque (not the card's translucent panel look) and a solid
+     glowing border, so the hint reads clearly over the tile row below it
+     instead of blending in. */
+  background: #061824; border: 2px solid var(--cyan);
+  color: #e8f6fa; font-size: .72rem; font-weight: 500; line-height: 1.3;
+  text-align: center; white-space: normal;
+  box-shadow: 0 0 20px rgba(82, 241, 255, .7), 0 4px 14px rgba(0, 0, 0, .6);
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity .15s ease, transform .15s ease;
+  z-index: 30;
+}
+.hat-tile[data-tip]::before {
+  content: "";
+  position: absolute; top: 100%; left: 50%; transform: translateX(-50%) translateY(-4px);
+  border: 6px solid transparent; border-bottom-color: var(--cyan);
+  opacity: 0; visibility: hidden; transition: opacity .15s ease, transform .15s ease;
+  z-index: 30;
+}
+.hat-tile[data-tip]:hover::after, .hat-tile[data-tip]:focus-visible::after,
+.hat-tile[data-tip]:hover::before, .hat-tile[data-tip]:focus-visible::before {
+  opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0);
+}
+
 #gameover-unlocks { color: #ffd76b; font-weight: 700; }
-.panels { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-a { color: #8fd8ee; transition: text-shadow .15s ease; }
-a:hover, a:focus-visible { text-shadow: 0 0 8px rgba(143, 216, 238, .6); }
-#puddle-bg { position: fixed; inset: 0; z-index: -1; width: 100vw; height: 100vh; background: #06222f; }
+
+.side-panels { display: grid; gap: 1rem; }
+.panel h2 { margin: 0 0 .6rem; font-size: 1rem; letter-spacing: .03em; color: var(--cyan); }
+#leaderboard { margin: 0; padding-left: 1.2rem; }
+#leaderboard li { padding: .1rem 0; }
+
+.readme-link { text-align: center; margin-top: 2rem; }
+a { color: var(--cyan); transition: text-shadow .15s ease; }
+a:hover, a:focus-visible { text-shadow: 0 0 8px rgba(82, 241, 255, .7); }
+
+#puddle-bg { position: fixed; inset: 0; z-index: -2; width: 100vw; height: 100vh; background: var(--ink); }
+
+/* ---------- in-game screen (unchanged flow, same palette) ---------- */
 #game { max-width: none; padding: 0; position: fixed; inset: 0; }
 canvas { width: 100%; height: 100%; display: block; background: #0a3548; touch-action: none; }
 #hud { position: absolute; top: .8rem; left: .8rem; font-weight: 700; text-shadow: 0 1px 3px #000; }
@@ -65,7 +240,7 @@ canvas { width: 100%; height: 100%; display: block; background: #0a3548; touch-a
 #gameover { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; background: #000a; }
 #connection-lost {
   position: fixed; inset: 0; display: grid; place-content: center; text-align: center;
-  background: #06222f; max-width: 24rem; margin: 0 auto; padding: 0 1rem;
+  background: var(--ink); max-width: 24rem; margin: 0 auto; padding: 0 1rem;
 }
 #liveboard {
   position: absolute; top: 3.1rem; right: .8rem;
@@ -88,12 +263,27 @@ canvas { width: 100%; height: 100%; display: block; background: #0a3548; touch-a
   border-radius: 999px;
   overflow: hidden;
 }
-#dash-fill { height: 100%; width: 0%; background: #ffb347; transition: width .1s linear; }
+#dash-fill { height: 100%; width: 0%; background: var(--amber); transition: width .1s linear; }
 #dash-hint {
   position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
   margin-top: .35rem; font-size: .7rem; white-space: nowrap;
   text-shadow: 0 1px 3px #000; opacity: .9;
 }
+
+/* buttons in the in-game screen keep the simpler pre-revamp look; only the
+   start screen gets the loud treatment above */
+#give-up, #again, #reconnect {
+  cursor: pointer; transition: box-shadow .15s ease, transform .15s ease;
+}
+#again, #reconnect {
+  padding: .7rem 1.2rem; font-size: 1.1rem; border: 0; border-radius: 6px; background: var(--amber);
+  font-weight: 700;
+}
+#again:hover, #again:focus-visible, #reconnect:hover, #reconnect:focus-visible {
+  outline: none; transform: translateY(-1px);
+  box-shadow: 0 0 0 3px rgba(255, 179, 71, .35), 0 0 18px rgba(255, 179, 71, .5);
+}
+
 body.doc main { max-width: 720px; margin: 0 auto; padding: 1.5rem; line-height: 1.5; }
 body.doc img { max-width: 100%; }
 body.doc pre { background: #0a3548; padding: .8rem; overflow-x: auto; }

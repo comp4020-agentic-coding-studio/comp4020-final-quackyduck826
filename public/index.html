@@ -12,19 +12,32 @@
 <body>
   <section id="start" class="screen">
     <canvas id="puddle-bg"></canvas>
-    <h1>pond.io</h1>
-    <p class="tag">Eat small. Grow big. Avoid bigger fish.</p>
-    <form id="start-form">
-      <label>Username <input id="username" name="username" maxlength="16" placeholder="anon" autocomplete="off"></label>
-      <fieldset id="colour-picker"><legend>Colour</legend></fieldset>
-      <fieldset id="hats-menu"><legend>Hat</legend></fieldset>
-      <button id="play" type="submit">Play</button>
-    </form>
-    <div class="panels">
-      <div><h2>Your best</h2><div id="personal-best"></div></div>
-      <div><h2>Top 10 players</h2><ol id="leaderboard"></ol></div>
+    <div class="grid-floor" aria-hidden="true"></div>
+    <div class="glow glow-cyan" aria-hidden="true"></div>
+    <div class="glow glow-pink" aria-hidden="true"></div>
+
+    <header class="hero">
+      <h1 class="title">pond<span class="title-dot">.</span>io</h1>
+      <p class="tag">Eat small. Grow big. Avoid bigger fish.</p>
+    </header>
+
+    <div class="start-grid">
+      <form id="start-form" class="play-card">
+        <label class="field">Username <input id="username" name="username" maxlength="16" placeholder="anon" autocomplete="off"></label>
+        <fieldset id="colour-picker"><legend>Colour</legend></fieldset>
+        <button id="play" type="submit" class="play-btn"><span>Play</span></button>
+        <fieldset id="hats-menu">
+          <legend>Hat <span class="legend-hint">hover a hat for its unlock</span></legend>
+        </fieldset>
+      </form>
+
+      <aside class="side-panels">
+        <div class="panel"><h2>Your best</h2><div id="personal-best"></div></div>
+        <div class="panel"><h2>Top 10 players</h2><ol id="leaderboard"></ol></div>
+      </aside>
     </div>
-    <p><a href="/readme/">README</a></p>
+
+    <p class="readme-link"><a href="/readme/">README</a></p>
   </section>
 
   <section id="game" class="screen" hidden>
