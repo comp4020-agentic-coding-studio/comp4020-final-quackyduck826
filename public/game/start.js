@@ -35,7 +35,12 @@ function renderHatsMenu(menu, profile) {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "hat-tile";
-    b.title = title;
+    // Rendered as a custom CSS tooltip (data-tip, styled in style.css) rather
+    // than the native title attribute, so the unlock hint reads as part of
+    // the loud pond.io visual style instead of a plain OS tooltip. aria-label
+    // keeps the same text available to assistive tech without a visible title.
+    b.dataset.tip = title;
+    b.setAttribute("aria-label", title);
     const unlocked = id === null || profile.hatsUnlocked.includes(id);
     b.disabled = !unlocked;
     b.setAttribute("aria-pressed", String(id === selected));
