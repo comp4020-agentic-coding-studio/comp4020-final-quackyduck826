@@ -263,10 +263,10 @@ legend {
 #leaderboard { margin: 0; padding-left: 1.2rem; }
 #leaderboard li { padding: .1rem 0; }
 
-/* Fixed height (not aspect-ratio) so the fish stays a reasonably large,
-   consistent size across viewports rather than scaling with the sidebar's
-   own (fairly narrow) width. */
-#fish-preview { display: block; width: 100%; height: 11rem; cursor: default; }
+/* Square so the fish (drawn centred, and free to face any direction) always
+   has equal clearance on every side rather than being clipped top/bottom by
+   a wide-but-short box. */
+#fish-preview { display: block; width: 100%; aspect-ratio: 1 / 1; cursor: default; }
 
 .readme-link { text-align: center; margin-top: 2rem; }
 a { color: var(--cyan); transition: text-shadow .15s ease; }

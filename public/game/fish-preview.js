@@ -1,15 +1,14 @@
 import { drawFish } from "./render.js";
 
-// Fixed body size for the preview — the "you" entity shape drawFish expects,
-// but there's no real game state here, just a colour and a hat to show off.
-const PREVIEW_SIZE = 60;
-// How far (radians/sec) the heading eases toward the pointer each frame; a
-// constant rotation speed, not proportional to the angle gap, so the turn
-// reads the same unhurried speed whether the mouse is a little or a lot off
-// to one side, rather than a slow creep for pointer, fast whip for far ones.
-const TURN_RATE = 2.2;
+// The fish's drawn radius (nose/tail/fin tip, worst case over the tail-wag
+// cycle) is ~2.83x its `size` — see render.js's drawFish. The preview picks
+// `size` so that radius fits inside the canvas's own half-extent (with a
+// margin), so the fish can face any direction at all without clipping on a
+// square canvas, rather than using a fixed size tuned for one orientation.
+const FISH_MAX_RADIUS_FACTOR = 2.83;
+const FIT_MARGIN = 0.92;
 
-// Starts the fish-preview canvas spinning to follow the mouse. Like
+// Starts the fish-preview canvas snapping to face the mouse. Like
 // puddle-bg.js's startPuddleBackground, safe to call before the canvas is in
 // the document (returns a no-op) and returns a stop function. `getLook` is
 // called once per frame for the current { colour, hat } to show — read live
@@ -21,11 +20,12 @@ export function startFishPreview(canvasId, getLook) {
   if (!canvas) return () => {};
   const ctx = canvas.getContext("2d");
   let running = true;
-  let angle = 0;
   // Defaults to facing right until the pointer first moves over the canvas,
   // rather than snapping to face the very first mouse position recorded
-  // anywhere on the page.
-  let pointerAngle = 0;
+  // anywhere on the page. Unlike in-game steering, the preview has no slow
+  // turn to ease: it locks straight onto the pointer so the fish's facing
+  // always matches the cursor immediately.
+  let angle = 0;
 
   function resize() {
     const dpr = devicePixelRatio || 1;
@@ -43,27 +43,20 @@ export function startFishPreview(canvasId, getLook) {
     const dy = ev.clientY - (r.top + r.height / 2);
     // Below a small dead zone, keep the last heading rather than letting the
     // angle jitter around the fish's own centre point.
-    if (Math.hypot(dx, dy) > 4) pointerAngle = Math.atan2(dy, dx);
+    if (Math.hypot(dx, dy) > 4) angle = Math.atan2(dy, dx);
   }
   addEventListener("pointermove", onMove);
 
-  let last = performance.now();
   function frame(now) {
     if (!running) return;
-    const dt = Math.min(0.05, (now - last) / 1000);
-    last = now;
-
-    let diff = (pointerAngle - angle) % (Math.PI * 2);
-    if (diff > Math.PI) diff -= Math.PI * 2;
-    if (diff < -Math.PI) diff += Math.PI * 2;
-    angle += Math.max(-TURN_RATE * dt, Math.min(TURN_RATE * dt, diff));
 
     const { clientWidth: w, clientHeight: h } = canvas;
     ctx.clearRect(0, 0, w, h);
     const { colour, hat } = getLook();
+    const size = (Math.min(w, h) / 2) * (FIT_MARGIN / FISH_MAX_RADIUS_FACTOR);
     drawFish(
       ctx,
-      { x: w / 2, y: h / 2, angle, tailWag: now / 300, size: PREVIEW_SIZE, colour, hat },
+      { x: w / 2, y: h / 2, angle, tailWag: now / 300, size, colour, hat },
       false,
       false,
     );
