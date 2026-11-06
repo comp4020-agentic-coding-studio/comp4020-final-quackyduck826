@@ -124,33 +124,54 @@ legend {
 }
 .legend-hint { font-size: .72rem; opacity: .6; font-weight: 400; }
 
-/* Fixed 4-across grid of 1fr columns, still sized to fill the fieldset edge-
-   to-edge, but with a deliberately negative column-gap so neighbouring
-   circles overlap by 1/5 of their own width instead of sitting apart: with 4
-   equal-width columns and 3 gaps summing to 100% (4W + 3g = 100%, g = -0.2W),
-   solving gives W ≈ 29.41% and g ≈ -5.88%. row-gap is 0 so the two rows
-   touch before the second row's stagger (below) pulls it up to overlap too. */
+/* Honeycomb layout via flexbox, not CSS grid: grid's gap/column-gap property
+   does not accept negative values at all (invalid, silently dropped), so an
+   earlier version of this rule that tried a negative column-gap for overlap
+   was never actually applied — row 1 rendered at normal (zero-overlap)
+   spacing, and adding a diagonal stagger to position row 2 on top of that
+   unshrunk row pushed it past the right edge. margin-left, unlike gap, does
+   accept negative values, so overlap here comes from a negative margin on
+   every swatch after the first in its row instead.
+   Row 1 is 4 circles of width W with pitch P (centre-to-centre spacing)
+   between them, each one covering a (1 - P/W) fraction of the previous
+   circle's width (the "1/3 overlap" below means P/W = 2/3). Row width =
+   W + 3P. Row 2 is the same row shifted right by half a pitch, P/2, which
+   governs how far right the combined shape actually reaches (not row 1's
+   own width alone) — so solving (row width) + P/2 = 100% for W, with
+   P = (2/3)W, gives W(1 + 3·2/3 + 1/3) = 100% → W = 100%/3.3̄ = 30%, pitch
+   P = 20%, and the per-swatch negative margin is P - W = -10%. */
 #colour-picker {
-  display: grid; grid-template-columns: repeat(4, 1fr);
-  column-gap: -5.88%; row-gap: 0;
+  display: flex; flex-wrap: wrap;
   padding-top: .3rem;
 }
 .swatch {
-  --stagger-x: 0; --stagger-y: 0; --scale: 1;
-  width: 100%; aspect-ratio: 1; position: relative;
+  --stagger-y: 0; --scale: 1;
+  flex: 0 0 30%; aspect-ratio: 1; position: relative;
+  margin-left: -10%;
   border-radius: 50%; border: 3px solid transparent; cursor: pointer;
   padding: 0; transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease;
-  transform: translate(var(--stagger-x), var(--stagger-y)) scale(var(--scale));
+  transform: translateY(var(--stagger-y)) scale(var(--scale));
 }
-/* nth-of-type, not nth-child: swatches are the fieldset's only children here
+/* The first swatch of each row needs its own left position instead of the
+   usual -10% overlap margin: row 1's first swatch sits flush at the
+   fieldset's left edge (margin-left: 0, not -10% — there's no previous
+   swatch in this row to overlap), and row 2's first swatch (the 5th swatch
+   overall) is shifted right by half a pitch (10%, see the layout comment
+   above) rather than overlapping leftward into row 1's own area.
+   nth-of-type, not nth-child: swatches are the fieldset's only children here
    (the legend is a separate sibling outside this selector's reach), but kept
    for the same reason the old honeycomb layout used it — robust to a legend
-   or other non-swatch child landing in between. Row 2 (the 5th swatch
-   onward) is nudged half a column right and pulled up by a fifth of its own
-   height, so it nests diagonally into row 1's overlap gaps instead of
-   sitting in a plain second row. Percentages, not fixed rem, so the stagger
-   scales with however big the circles actually render. */
-.swatch:nth-of-type(n+5) { --stagger-x: 50%; --stagger-y: -20%; }
+   or other non-swatch child landing in between. */
+.swatch:nth-of-type(1) { margin-left: 0; }
+.swatch:nth-of-type(5) { margin-left: 10%; }
+/* Row 2 (5th swatch onward) is also pulled up to overlap row 1 vertically,
+   nesting diagonally into its gaps rather than sitting in a plain second
+   row below it. transform's percentage is relative to the swatch's OWN
+   height (unlike margin's, which is always relative to the container's
+   WIDTH, even for margin-top/bottom — not usable here since the circles
+   aren't necessarily as tall as the container is wide), so this scales
+   correctly with however big the circles actually render. */
+.swatch:nth-of-type(n+5) { --stagger-y: -33.33%; }
 .swatch[aria-pressed="true"] { border-color: #fff; --scale: 1.06; z-index: 1; }
 .swatch:hover, .swatch:focus-visible {
   outline: none; box-shadow: 0 0 12px rgba(82, 241, 255, .7); --scale: 1.05;
