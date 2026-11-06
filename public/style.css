@@ -124,25 +124,42 @@ legend {
 }
 .legend-hint { font-size: .72rem; opacity: .6; font-weight: 400; }
 
-/* Fixed 4-across grid of 1fr columns, so each swatch stretches to fill its
-   cell edge-to-edge instead of sitting undersized in the middle of a wide
-   track — gap is the only space between circles, so columns/rows end up
-   evenly spaced and the grid fills the fieldset in every direction without
-   spilling past its padding. */
+/* Fixed 4-across grid of 1fr columns, still sized to fill the fieldset edge-
+   to-edge, but with a deliberately negative column-gap so neighbouring
+   circles overlap by 1/5 of their own width instead of sitting apart: with 4
+   equal-width columns and 3 gaps summing to 100% (4W + 3g = 100%, g = -0.2W),
+   solving gives W ≈ 29.41% and g ≈ -5.88%. row-gap is 0 so the two rows
+   touch before the second row's stagger (below) pulls it up to overlap too. */
 #colour-picker {
   display: grid; grid-template-columns: repeat(4, 1fr);
-  gap: .6rem;
+  column-gap: -5.88%; row-gap: 0;
   padding-top: .3rem;
 }
 .swatch {
-  --scale: 1;
-  width: 100%; aspect-ratio: 1;
+  --stagger-x: 0; --stagger-y: 0; --scale: 1;
+  width: 100%; aspect-ratio: 1; position: relative;
   border-radius: 50%; border: 3px solid transparent; cursor: pointer;
   padding: 0; transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease;
-  transform: scale(var(--scale));
+  transform: translate(var(--stagger-x), var(--stagger-y)) scale(var(--scale));
 }
-.swatch[aria-pressed="true"] { border-color: #fff; --scale: 1.06; }
-.swatch:hover, .swatch:focus-visible { outline: none; box-shadow: 0 0 12px rgba(82, 241, 255, .7); --scale: 1.05; }
+/* nth-of-type, not nth-child: swatches are the fieldset's only children here
+   (the legend is a separate sibling outside this selector's reach), but kept
+   for the same reason the old honeycomb layout used it — robust to a legend
+   or other non-swatch child landing in between. Row 2 (the 5th swatch
+   onward) is nudged half a column right and pulled up by a fifth of its own
+   height, so it nests diagonally into row 1's overlap gaps instead of
+   sitting in a plain second row. Percentages, not fixed rem, so the stagger
+   scales with however big the circles actually render. */
+.swatch:nth-of-type(n+5) { --stagger-x: 50%; --stagger-y: -20%; }
+.swatch[aria-pressed="true"] { border-color: #fff; --scale: 1.06; z-index: 1; }
+.swatch:hover, .swatch:focus-visible {
+  outline: none; box-shadow: 0 0 12px rgba(82, 241, 255, .7); --scale: 1.05;
+  /* Each swatch already gets its own stacking context from `transform`
+     above, so this is enough to paint a hovered/focused circle above the
+     neighbours it now overlaps, rather than under whichever painted later
+     in DOM order. */
+  z-index: 2;
+}
 
 /* Fixed 2-across grid so every tile (including "None") is the same width
    all the way down the list, instead of flex-wrap sizing each to its label. */
