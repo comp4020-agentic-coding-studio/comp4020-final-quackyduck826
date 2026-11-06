@@ -37,7 +37,7 @@ export const THRESHOLDS = {
   survivalistSeconds: 180, // 3 minutes — well past typical early-death timescales
   gluttonCount: 15, // sustained predation, not an incidental kill or two
   herbivoreCount: 30, // reachable within the ~50-pickup budget before KELP_EAT_SIZE locks out food-eating
-  dashMasterCount: 20, // >=56s of dash-reliant play at the ~2.8s cooldown
+  dashMasterCount: 20, // >=34s of dash-reliant play at the ~1.7s cooldown
   giantSlayerWindowSeconds: 20, // how far back "recently" looks
   giantSlayerMultiplier: 2.5, // victim size vs. size this many seconds ago
   giantSlayerMinVictimSize: 50, // floor so a near-join-size kill can't trivially qualify

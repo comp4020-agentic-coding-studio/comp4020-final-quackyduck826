@@ -24,10 +24,14 @@ const TURN_RATE = 8; // radians/sec an entity can turn to face its heading
 const SHRINK_SIZE = 40; // past this size an entity shrinks over time
 const SHRINK_RATE = 1 / 3; // size lost per second while above SHRINK_SIZE
 const KELP_EAT_SIZE = 60; // past this size a fish has outgrown eating kelp
-const DASH_BOOST = 2.2; // speed multiplier while dashing
+const DASH_BOOST = 2.6; // base speed multiplier while dashing
+// Extra fraction of DASH_BOOST added on top for a fish at MAX_SIZE, tapering
+// linearly from 0 at size 0 — bigger fish dash a bit further, but the boost
+// never fully scales with size (that would make a dash trivial at max size).
+const DASH_SIZE_SCALE = 0.3;
 export const DASH_DURATION = 0.3; // seconds the dash burst lasts
-const DASH_PENALTY = 0.55; // speed multiplier during the post-dash slowdown
-export const DASH_PENALTY_DURATION = 2.5; // seconds of slowdown that pays for the dash
+const DASH_PENALTY = 0.75; // speed multiplier during the post-dash slowdown
+export const DASH_PENALTY_DURATION = 1.4; // seconds of slowdown that pays for the dash
 
 let nextId = 1;
 const rand = (n) => Math.random() * n;
@@ -102,7 +106,10 @@ export function removePlayer(state, player) {
 
 const speedFor = (e) => {
   const base = BASE_SPEED / (1 + e.size / 60);
-  if (e.dashTimer > 0) return base * DASH_BOOST;
+  if (e.dashTimer > 0) {
+    const boost = DASH_BOOST + DASH_SIZE_SCALE * DASH_BOOST * Math.min(1, e.size / MAX_SIZE);
+    return base * boost;
+  }
   if (e.dashPenaltyTimer > 0) return base * DASH_PENALTY;
   return base;
 };
