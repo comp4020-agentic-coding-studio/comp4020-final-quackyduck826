@@ -6,6 +6,7 @@ import { render, triggerBite } from "./render.js";
 import { DASH_DURATION, DASH_PENALTY_DURATION } from "./sim.js";
 import { HATS, initStart, showBest, showLeaderboard } from "./start.js";
 import { startPuddleBackground } from "./puddle-bg.js";
+import { startFishPreview } from "./fish-preview.js";
 
 const $ = (id) => document.getElementById(id);
 const canvas = $("canvas");
@@ -13,6 +14,7 @@ const ctx = canvas.getContext("2d");
 const { readHeading, consumeDash } = createInput(canvas);
 let profile = loadProfile();
 let stopPuddleBg = null;
+let stopFishPreview = null;
 
 // Backing store sized at device pixel density (not just CSS pixels), then
 // scaled back down via the context transform: without this, a canvas stretched
@@ -35,6 +37,7 @@ function showStart() {
   showLeaderboard();
   start.refresh(profile);
   if (!stopPuddleBg) stopPuddleBg = startPuddleBackground();
+  if (!stopFishPreview) stopFishPreview = startFishPreview("fish-preview", start.getLook);
 }
 
 // The server is authoritative: this client's own role is to send input and
@@ -48,6 +51,8 @@ function play({ username, colour, wornHat }) {
   $("connection-lost").hidden = true;
   stopPuddleBg?.();
   stopPuddleBg = null;
+  stopFishPreview?.();
+  stopFishPreview = null;
   resize();
   resetLiveboard();
   $("dash-bar").hidden = true;

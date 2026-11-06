@@ -538,8 +538,12 @@ export function drawHatIcon(canvas, hatId) {
 // Teardrop body (round head, pointed tail-base) viewed from directly above,
 // with a two-joint tail fin that wags from `tailWag`, faster when swimming faster.
 // `outline` is "you" (thick white, the camera target), "player" (thin gold
-// ring, a real rival), or falsy (a bot, no ring).
-function drawFish(ctx, e, outline) {
+// ring, a real rival), or falsy (a bot, no ring). `showLabel` is false for
+// the start screen's fish preview (fish-preview.js, drawing one standalone
+// fish on its own small canvas, the same way drawHatIcon below draws one
+// standalone hat) — a name floating above a fish with nothing else around it
+// to give it scale/context doesn't read as a name tag, just clutter.
+export function drawFish(ctx, e, outline, showLabel = true) {
   const fill = COLOURS[e.colour] ?? "#fff";
   const headR = e.size;
   const bodyLen = e.size * 3.4;
@@ -623,6 +627,8 @@ function drawFish(ctx, e, outline) {
   if (e.hat) drawHat(ctx, e.hat, headR, noseCenterX);
 
   ctx.restore();
+
+  if (!showLabel) return;
 
   // Name label, drawn unrotated (outside the fish's own transform) so it
   // always reads upright regardless of which way the fish is facing.
