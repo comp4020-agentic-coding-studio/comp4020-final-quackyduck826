@@ -124,32 +124,25 @@ legend {
 }
 .legend-hint { font-size: .72rem; opacity: .6; font-weight: 400; }
 
-/* Fixed 4-across grid rather than flex-wrap, so swatches line up in neat
-   rows regardless of how many colours there are. Columns are sized to the
-   swatch itself (not 1fr, which stretches each column to a quarter of the
-   box and leaves the circle centred inside a lot of unused track width) so
-   the gap values below are the actual, full spacing between circles. The
-   whole row is then centred as a group with justify-content. The second row
-   (nth-of-type(n+5)) is nudged right and up by part of a column's pitch so
-   its circles nestle diagonally into the gaps of the row above instead of
-   sitting in a plain grid. */
+/* Fixed 4-across grid of 1fr columns, so each swatch stretches to fill its
+   cell edge-to-edge instead of sitting undersized in the middle of a wide
+   track — gap is the only space between circles, so columns/rows end up
+   evenly spaced and the grid fills the fieldset in every direction without
+   spilling past its padding. */
 #colour-picker {
-  display: grid; grid-template-columns: repeat(4, max-content);
-  justify-content: center; column-gap: .08rem; row-gap: .52rem;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: .6rem;
   padding-top: .3rem;
 }
 .swatch {
-  --stagger-x: 0px; --stagger-y: 0px; --scale: 1;
-  width: 1.44rem; aspect-ratio: 1;
+  --scale: 1;
+  width: 100%; aspect-ratio: 1;
   border-radius: 50%; border: 3px solid transparent; cursor: pointer;
   padding: 0; transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease;
-  transform: translate(var(--stagger-x), var(--stagger-y)) scale(var(--scale));
+  transform: scale(var(--scale));
 }
-/* nth-of-type, not nth-child: the fieldset's <legend> is also a child,
-   which would otherwise throw the row split off by one. */
-.swatch:nth-of-type(n+5) { --stagger-x: 1rem; --stagger-y: -.44rem; }
-.swatch[aria-pressed="true"] { border-color: #fff; --scale: 1.1; }
-.swatch:hover, .swatch:focus-visible { outline: none; box-shadow: 0 0 12px rgba(82, 241, 255, .7); --scale: 1.08; }
+.swatch[aria-pressed="true"] { border-color: #fff; --scale: 1.06; }
+.swatch:hover, .swatch:focus-visible { outline: none; box-shadow: 0 0 12px rgba(82, 241, 255, .7); --scale: 1.05; }
 
 /* Fixed 2-across grid so every tile (including "None") is the same width
    all the way down the list, instead of flex-wrap sizing each to its label. */
