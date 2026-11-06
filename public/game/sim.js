@@ -9,7 +9,7 @@ import { randomFishName } from "./fish-names.js";
 export const WORLD = 2000;
 export const START_SIZE = 10;
 const FOOD_GROWTH = 1;
-const EAT_MARGIN = 1.1;
+const EAT_MARGIN = 1.05; // attacker must be this much bigger than prey to eat it
 const FOOD_COUNT = 70;
 const BASE_SPEED = 160;
 // The hard ceiling on size: growth stops here. Also doubles as the endgame
@@ -35,6 +35,18 @@ export const DASH_PENALTY_DURATION = 1.4; // seconds of slowdown that pays for t
 
 let nextId = 1;
 const rand = (n) => Math.random() * n;
+
+// Mirrors src/server's HAT_IDS (that one's TypeScript, loaded server-side
+// only, so the ids are duplicated here rather than shared across the
+// client/server boundary — same duplication start.js's own HATS list already
+// accepts). Only used to give bots a cosmetic hat; nothing mechanical reads
+// a bot's hat the way a player's wornHat is checked against hatsUnlocked.
+const HAT_IDS = [
+  "crown", "survivalist", "glutton", "herbivore", "dashMaster",
+  "playerHunter", "giantSlayer", "veteran", "leaderboardEntrant", "leaderboardLeader",
+];
+const BOT_HAT_CHANCE = 0.4;
+const maybeBotHat = () => (rand(1) < BOT_HAT_CHANCE ? HAT_IDS[Math.floor(rand(HAT_IDS.length))] : null);
 
 // `name` defaults to a random fish pun; the caller overwrites it with a
 // player's own username right after creating their entity.
@@ -65,10 +77,15 @@ export function spawnFood(colourPool) {
 // of the world's own lifetime — joining or leaving never resets it.
 export function createWorld(botColours, botCount = 14) {
   const state = { players: [], bots: [], food: [], respawns: [], events: [], elapsed: 0, palette: botColours };
-  for (let i = 0; i < botCount; i++) state.bots.push(makeEntity(botColours[i % botColours.length], START_SIZE + rand(15)));
+  for (let i = 0; i < botCount; i++) {
+    const bot = makeEntity(botColours[i % botColours.length], START_SIZE + rand(15));
+    bot.hat = maybeBotHat();
+    state.bots.push(bot);
+  }
   for (let i = 0; i < BIG_BOTS; i++) {
     const big = makeEntity(botColours[i % botColours.length], BIG_BOT_MIN + rand(BIG_BOT_RANGE));
     big.big = true;
+    big.hat = maybeBotHat();
     state.bots.push(big);
   }
   while (state.food.length < FOOD_COUNT) state.food.push(spawnFood(botColours));
@@ -142,6 +159,7 @@ const clamp = (v) => Math.min(WORLD, Math.max(0, v));
 
 export function respawnBot(state, { colour, big }) {
   const bot = makeEntity(colour, big ? BIG_BOT_MIN + rand(BIG_BOT_RANGE) : START_SIZE);
+  bot.hat = maybeBotHat();
   if (big) {
     bot.big = true;
     let tries = 0;
