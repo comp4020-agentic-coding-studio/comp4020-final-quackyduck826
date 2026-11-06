@@ -3,6 +3,11 @@
 // between two known server states instead of snapping to whichever snapshot
 // arrived most recently.
 const RENDER_DELAY = 0.1; // seconds behind the latest snapshot; absorbs jitter between 20Hz ticks
+// How fast the render clock (see sample() below) is pulled back toward the
+// server's timeline per second of drift — fast enough to absorb normal
+// network jitter within a frame or two, slow enough that a single late
+// packet doesn't visibly snap the clock.
+const CORRECTION_RATE = 4;
 
 function wsUrl() {
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
@@ -62,11 +67,37 @@ export function connect({ name, colour, wornHat, onWelcome, onJoined, onDeath, o
     socket.send(JSON.stringify({ type: "giveUp" }));
   }
 
+  // The render clock advances by real elapsed time every call (see below),
+  // rather than being recomputed from the latest snapshot's own timestamp —
+  // that timestamp only moves once per ~50ms server tick, so pinning render
+  // time to it directly held every entity frozen for the whole tick and then
+  // snapped on arrival, reading as jitter at the ~60fps this is sampled from.
+  let renderClock = null;
+  let lastSampleAt = null;
+
   // Returns an interpolated view of the world at "now minus RENDER_DELAY", or
   // null if there isn't enough snapshot history yet (e.g. just connected).
   function sample() {
     if (buffer.length === 0) return null;
-    const renderTime = buffer[buffer.length - 1].t - RENDER_DELAY;
+    const now = performance.now();
+    // Clamp to 0.1s so a backgrounded tab (huge wallDt on refocus) doesn't
+    // fast-forward the render clock in one jump; it just catches up over the
+    // next few frames via the correction step below instead.
+    const wallDt = lastSampleAt == null ? 0 : Math.min(0.1, (now - lastSampleAt) / 1000);
+    lastSampleAt = now;
+
+    const target = buffer[buffer.length - 1].t - RENDER_DELAY;
+    if (renderClock == null) {
+      renderClock = target;
+    } else {
+      // Advance with real time first, then ease the residual drift from the
+      // target (network jitter, a slightly fast/slow tick rate) back in
+      // gradually, rather than snapping straight to target every call.
+      renderClock += wallDt;
+      renderClock += (target - renderClock) * Math.min(1, CORRECTION_RATE * wallDt);
+    }
+    const renderTime = renderClock;
+
     let older = buffer[0];
     let newer = buffer[buffer.length - 1];
     for (let i = 0; i < buffer.length - 1; i++) {
