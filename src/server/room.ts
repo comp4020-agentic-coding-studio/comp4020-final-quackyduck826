@@ -42,6 +42,10 @@ interface Entity {
   dashTimer: number;
   dashPenaltyTimer: number;
   big?: boolean;
+  // Bots get a random cosmetic hat at spawn (see maybeBotHat() in sim.js);
+  // unlike a player's wornHat, nothing checks this against an unlock list —
+  // a bot has no account to have earned one from.
+  hat?: HatId | null;
 }
 interface Player extends Entity {
   score: number;
@@ -324,6 +328,7 @@ function broadcast(): void {
   const players = world.players.map(publicPlayer);
   const bots = world.bots.map((b) => ({
     id: b.id, x: b.x, y: b.y, angle: b.angle, tailWag: b.tailWag, size: b.size, colour: b.colour, name: b.name,
+    hat: b.hat,
   }));
   const food = world.food.map((f) => ({ id: f.id, x: f.x, y: f.y, size: f.size, colour: f.colour }));
   const events = world.events;
