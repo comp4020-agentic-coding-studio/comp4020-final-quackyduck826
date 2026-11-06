@@ -184,8 +184,21 @@ legend {
      (DOM order), so its tooltip got drawn under the row beneath it. */
   z-index: 20;
 }
-.hat-tile:disabled { opacity: .45; cursor: not-allowed; }
-.hat-tile:disabled:hover { box-shadow: 0 0 10px rgba(255, 79, 216, .35); border-color: var(--pink); }
+/* Dims via color, not `opacity` on the tile itself: opacity < 1 creates a new
+   stacking context that composites at that same dimmed level, which also
+   trapped the tooltip below (an ::after child of this element, see further
+   down) at 45% opacity and under later, non-dimmed tiles in the grid instead
+   of on top of everything like the unlocked tiles' tooltip. The icon canvas
+   gets its own greyscale look separately, via an inline filter set in
+   start.js, so it isn't lightened by this. */
+.hat-tile:disabled { color: rgba(232, 246, 250, .45); cursor: not-allowed; }
+.hat-tile:disabled:hover {
+  box-shadow: 0 0 10px rgba(255, 79, 216, .35); border-color: var(--pink);
+  /* Same reasoning as the unlocked hover rule above: without this the
+     tooltip (via z-index on this element's own stacking context) still
+     painted under later tiles in the grid. */
+  z-index: 20;
+}
 
 /* Custom tooltip for a hat's unlock condition, shown on hover/focus for both
    locked and unlocked tiles (native `title` was swapped for data-tip in
@@ -228,6 +241,11 @@ legend {
 .panel h2 { margin: 0 0 .6rem; font-size: 1rem; letter-spacing: .03em; color: var(--cyan); }
 #leaderboard { margin: 0; padding-left: 1.2rem; }
 #leaderboard li { padding: .1rem 0; }
+
+/* Fixed height (not aspect-ratio) so the fish stays a reasonably large,
+   consistent size across viewports rather than scaling with the sidebar's
+   own (fairly narrow) width. */
+#fish-preview { display: block; width: 100%; height: 11rem; cursor: default; }
 
 .readme-link { text-align: center; margin-top: 2rem; }
 a { color: var(--cyan); transition: text-shadow .15s ease; }

@@ -72,7 +72,7 @@ function renderHatsMenu(menu, profile) {
   };
 
   makeTile(null, "None", "No hat");
-  for (const h of HATS) makeTile(h.id, h.label, profile.hatsUnlocked.includes(h.id) ? h.label : h.unlock);
+  for (const h of HATS) makeTile(h.id, h.label, h.unlock);
 
   return () => selected;
 }
@@ -113,6 +113,10 @@ export function initStart(profile, onPlay) {
       profile = nextProfile;
       getSelectedHat = renderHatsMenu(hatsMenu, profile);
     },
+    // Read fresh on every call (not captured once), so the fish preview
+    // (main.js) reflects a colour swatch or hat tile click immediately,
+    // without this module needing to know the preview exists at all.
+    getLook: () => ({ colour, hat: getSelectedHat() }),
   };
 }
 
