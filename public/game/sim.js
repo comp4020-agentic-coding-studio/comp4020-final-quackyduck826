@@ -152,7 +152,7 @@ export function respawnBot(state, { colour, big }) {
   state.bots.push(bot);
 }
 
-export const eatingLocked = (entity) => entity.isPlayer && entity.score >= MAX_SIZE;
+export const eatingLocked = (entity) => entity.isPlayer && entity.maxSize >= MAX_SIZE;
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
@@ -180,6 +180,10 @@ export function resolveEating(state) {
     state.food = state.food.filter((f) => {
       if (dist(e, f) < e.size) {
         e.size = Math.min(MAX_SIZE, e.size + FOOD_GROWTH);
+        // Score grows directly from what's eaten, not from e.size (which caps
+        // at MAX_SIZE and can later fall via SHRINK_RATE) — so a maxed-out or
+        // shrinking player still keeps earning score by eating.
+        if (e.isPlayer) e.score += FOOD_GROWTH;
         // Generic "this entity consumed something" record, same spirit as
         // the "eaten" event below — lets a caller (the room tick loop) tally
         // who ate food without having to inspect state.food itself.
@@ -198,6 +202,7 @@ export function resolveEating(state) {
       if (eatingLocked(a) && !d.isPlayer) continue;
       if (a.size > d.size * EAT_MARGIN && dist(a, d) < a.size - d.size * 0.3 && bitingWithHead(a, d)) {
         a.size = Math.min(MAX_SIZE, a.size + d.size * 0.4);
+        if (a.isPlayer) a.score += d.size * 0.4;
         dead.add(d);
         // `victimSize` is the victim's size at the moment it was eaten (before
         // it's removed from state below), and `by.id` identifies which entity
@@ -242,9 +247,10 @@ export function step(state, dt) {
     if (e.size > SHRINK_SIZE) e.size = Math.max(SHRINK_SIZE, e.size - SHRINK_RATE * dt);
   }
   for (const p of state.players) {
+    // maxSize (the peak body size ever reached) drives the eating-lock/crowned
+    // threshold, not the score, so capping out or shrinking back down doesn't
+    // also cap how much more score eating can earn.
     p.maxSize = Math.max(p.maxSize, p.size);
-    // Score tracks the peak size reached, so shrinking back down doesn't cost it.
-    p.score = p.maxSize;
   }
   const due = state.respawns.filter((r) => r.at <= state.elapsed);
   state.respawns = state.respawns.filter((r) => r.at > state.elapsed);

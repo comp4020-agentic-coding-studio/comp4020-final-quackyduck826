@@ -186,11 +186,14 @@ export function handleConnection(socket: WebSocket): void {
   socket.on("error", cleanup);
 }
 
-// The server holds the only trustworthy score (maxSize), so it submits to the
+// The server holds the only trustworthy score, so it submits to the
 // persistent leaderboard itself once a run ends, rather than asking the
-// client to report back a number it could have tampered with.
+// client to report back a number it could have tampered with. `score`
+// accumulates everything a player has ever eaten (see resolveEating() in
+// sim.js) rather than tracking peak size, so it keeps rising from eating
+// while maxed out or shrinking, instead of plateauing with maxSize.
 function finalStats(p: Player) {
-  return { score: Math.round(p.maxSize), timeSurvivedSeconds: Math.round(world.elapsed - p.joinedAt) };
+  return { score: Math.round(p.score), timeSurvivedSeconds: Math.round(world.elapsed - p.joinedAt) };
 }
 
 // Plain disconnect (network drop, tab closed) with no give-up or death
