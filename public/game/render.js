@@ -528,9 +528,19 @@ function drawLeafCrown(ctx, headR, noseCenterX) {
       const w = headR * 0.14 * (0.75 + leafRand(seed + 0.3) * 0.5);
       const tilt = (leafRand(seed + 0.9) - 0.5) * 0.6;
       hatSpike(ctx, lx, ly, h, w, "#b6ff3c", a + Math.PI / 2 + tilt);
+
+      // A small flower gem tucked among roughly a third of the leaves, sat
+      // further out at the leaf tips (not in the empty middle over the
+      // fish's face) so the flowers read as growing out of the wreath
+      // itself.
+      if (leafRand(seed + 0.2) < 0.35) {
+        const fr = r * (1.05 + leafRand(seed + 0.4) * 0.12);
+        const fx = cx + Math.cos(a) * fr;
+        const fy = Math.sin(a) * fr;
+        hatGem(ctx, fx, fy, headR * (0.07 + leafRand(seed + 0.6) * 0.05), "#ff4fd8");
+      }
     }
   });
-  hatGem(ctx, cx + headR * 0.05, headR * 0.08, headR * 0.14, "#ff4fd8");
 }
 
 // Dash Master: an amber crystal baseball cap — an angled dome plus a sharp
