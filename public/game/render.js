@@ -729,17 +729,22 @@ const HAT_RENDERERS = {
 // (in true headR units, applied before the scale so it isn't itself shrunk)
 // moves the whole hat toward the tail so its forward edge clears the eyes
 // (centred at noseCenterX + headR*0.3) instead of sitting on top of them.
+// Kept small so most hats sit close to the eyes rather than down near the
+// tail-ward edge of the head; herbivore's own larger nudge below keeps the
+// leaf crown exactly where it already was.
 const HAT_SCALE = 0.75;
-const HAT_BACK_SHIFT = 0.4;
+const HAT_BACK_SHIFT = 0.15;
 
 // Each hat's own forward/back nudge (toward the tail, in headR units) used to
 // live inside its renderer as `cx = noseCenterX - headR * K`. That ran after
 // `extraRotation` below, so a nose-tail nudge got rotated into a sideways one
 // whenever a hat was drawn on a (rotated) fish, throwing it off-centre. Moved
 // here so it's folded into the same pre-rotation translate as HAT_BACK_SHIFT
-// and always stays along the fish's true nose-tail axis.
+// and always stays along the fish's true nose-tail axis. herbivore's nudge is
+// larger than the rest specifically to offset HAT_BACK_SHIFT's drop above and
+// hold the leaf crown at its original, already-tuned position.
 const HAT_NUDGE = {
-  crown: 0.25, survivalist: 0.15, glutton: 0.2, herbivore: 0.2,
+  crown: 0.25, survivalist: 0.15, glutton: 0.2, herbivore: 0.5333,
   dashMaster: 0.25, playerHunter: 0.3, giantSlayer: 0.15, veteran: 0.15,
   leaderboardEntrant: 0.1, leaderboardLeader: 0.3,
 };
