@@ -401,7 +401,7 @@ function hatSpike(ctx, x, y, h, w, colour, angle = 0) {
   ctx.lineTo(w * 0.5, h * 0.18);
   ctx.lineTo(-w * 0.5, h * 0.18);
   ctx.closePath();
-  ctx.fillStyle = colour + "40";
+  ctx.fillStyle = colour + "73";
   ctx.fill();
   ctx.shadowBlur = 0;
   ctx.strokeStyle = colour;
@@ -447,7 +447,7 @@ function drawCrown(ctx, headR, noseCenterX) {
   const cx = noseCenterX;
   glowFill(ctx, "#52f1ff", headR * 0.3, Math.max(1, headR * 0.06), () => {
     ctx.ellipse(cx, headR * 0.05, headR * 0.95, headR * 0.3, 0, Math.PI * 1.08, Math.PI * 1.92);
-  }, "26");
+  }, "44");
   hatSpike(ctx, cx + headR * 0.05, -headR * 0.08, headR * 0.85, headR * 0.4, "#52f1ff");
   hatSpike(ctx, cx - headR * 0.55, headR * 0.08, headR * 0.5, headR * 0.3, "#ffb347", -0.3);
   hatSpike(ctx, cx + headR * 0.55, headR * 0.08, headR * 0.5, headR * 0.3, "#ffb347", 0.3);
@@ -461,10 +461,10 @@ function drawSurvivalistHat(ctx, headR, noseCenterX) {
   const cx = noseCenterX;
   glowFill(ctx, "#b6ff3c", headR * 0.3, Math.max(1, headR * 0.05), () => {
     ctx.ellipse(cx, 0, headR * 1.0, headR * 0.5, 0, 0, Math.PI * 2);
-  }, "1f");
+  }, "38");
   glowFill(ctx, "#ffb347", headR * 0.25, Math.max(1, headR * 0.05), () => {
     ctx.arc(cx, -headR * 0.02, headR * 0.58, Math.PI, 0);
-  }, "30");
+  }, "56");
   ctx.strokeStyle = "#b6ff3c";
   ctx.lineWidth = Math.max(1, headR * 0.05);
   ctx.beginPath();
@@ -481,7 +481,7 @@ function drawChefHat(ctx, headR, noseCenterX) {
   const cx = noseCenterX;
   glowFill(ctx, "#52f1ff", headR * 0.2, Math.max(1, headR * 0.05), () => {
     ctx.rect(cx - headR * 0.65, -headR * 0.14, headR * 1.3, headR * 0.26);
-  }, "22");
+  }, "3d");
   [
     [-0.42, -headR * 0.28, headR * 0.3],
     [0, -headR * 0.42, headR * 0.38],
@@ -489,7 +489,7 @@ function drawChefHat(ctx, headR, noseCenterX) {
   ].forEach(([xOff, y, r]) => {
     glowFill(ctx, "#e8fbff", headR * 0.25, Math.max(1, headR * 0.05), () => {
       ctx.arc(cx + xOff * headR, y, r, 0, Math.PI * 2);
-    }, "33");
+    }, "5c");
   });
 }
 
@@ -550,13 +550,13 @@ function drawDashCap(ctx, headR, noseCenterX) {
   const cx = noseCenterX;
   glowFill(ctx, "#ffb347", headR * 0.3, Math.max(1, headR * 0.05), () => {
     ctx.arc(cx, -headR * 0.05, headR * 0.62, Math.PI, 0);
-  }, "2e");
+  }, "53");
   glowFill(ctx, "#ffb347", headR * 0.2, Math.max(1, headR * 0.05), () => {
     ctx.moveTo(cx + headR * 0.3, -headR * 0.02);
     ctx.lineTo(cx + headR * 0.95, headR * 0.1);
     ctx.lineTo(cx + headR * 0.55, headR * 0.18);
     ctx.closePath();
-  }, "33");
+  }, "5c");
   hatGem(ctx, cx - headR * 0.05, -headR * 0.28, headR * 0.1, "#52f1ff");
   ctx.strokeStyle = "#52f1ff";
   ctx.lineWidth = Math.max(1, headR * 0.07);
@@ -584,7 +584,7 @@ function drawTricorn(ctx, headR, noseCenterX) {
     ctx.lineTo(cx + headR * 0.78, headR * 0.3);
     ctx.lineTo(cx + headR * 0.05, headR * 0.05);
     ctx.lineTo(cx - headR * 0.85, headR * 0.2);
-  }, "30");
+  }, "56");
   hatSpike(ctx, cx - headR * 0.25, -headR * 0.75, headR * 0.3, headR * 0.6, "#ff4fd8");
   hatSpike(ctx, cx + headR * 0.3, -headR * 0.35, headR * 0.25, headR * 0.5, "#ff4fd8", 0.2);
   hatSpike(ctx, cx + headR * 0.35, -headR * 0.5, headR * 0.55, headR * 0.16, "#52f1ff", 0.9);
@@ -596,7 +596,7 @@ function drawVikingHelmet(ctx, headR, noseCenterX) {
   const cx = noseCenterX;
   glowFill(ctx, "#52f1ff", headR * 0.3, Math.max(1, headR * 0.05), () => {
     ctx.arc(cx, 0, headR * 0.68, Math.PI, 0);
-  }, "26");
+  }, "44");
   glowFill(ctx, "#52f1ff", headR * 0.15, Math.max(1, headR * 0.03), () => {
     ctx.moveTo(cx, -headR * 0.68);
     ctx.lineTo(cx, 0);
@@ -615,7 +615,7 @@ function drawVikingHelmet(ctx, headR, noseCenterX) {
     ctx.quadraticCurveTo(side * headR * 0.1, -headR * 0.5, side * headR * 0.55, -headR * 0.8);
     ctx.quadraticCurveTo(side * headR * 0.35, -headR * 0.38, side * headR * 0.08, -headR * 0.1);
     ctx.closePath();
-    ctx.fillStyle = "#ffb34740";
+    ctx.fillStyle = "#ffb34773";
     ctx.fill();
     ctx.shadowBlur = 0;
     ctx.strokeStyle = "#ffb347";
@@ -632,10 +632,10 @@ function drawFedora(ctx, headR, noseCenterX) {
   const cx = noseCenterX;
   glowFill(ctx, "#ffb347", headR * 0.22, Math.max(1, headR * 0.05), () => {
     ctx.ellipse(cx, 0, headR * 0.85, headR * 0.35, 0, 0, Math.PI * 2);
-  }, "22");
+  }, "3d");
   glowFill(ctx, "#ffb347", headR * 0.18, Math.max(1, headR * 0.04), () => {
     ctx.ellipse(cx, -headR * 0.05, headR * 0.48, headR * 0.42, 0, Math.PI, 0);
-  }, "2e");
+  }, "53");
   ctx.strokeStyle = "#ffe8c4";
   ctx.lineWidth = Math.max(1, headR * 0.04);
   ctx.beginPath();
@@ -651,7 +651,7 @@ function drawMedal(ctx, headR, noseCenterX) {
   const cx = noseCenterX;
   glowFill(ctx, "#ffb347", headR * 0.25, Math.max(1, headR * 0.06), () => {
     ctx.ellipse(cx, headR * 0.05, headR * 0.9, headR * 0.3, 0, Math.PI * 1.05, Math.PI * 1.95);
-  }, "22");
+  }, "3d");
   hatGem(ctx, cx, headR * 0.35, headR * 0.26, "#ffb347");
   drawStar(ctx, cx, headR * 0.35, headR * 0.12, "#fff4de");
 }
@@ -670,7 +670,7 @@ function drawTrophy(ctx, headR, noseCenterX) {
     ctx.quadraticCurveTo(cx - bowlW, topY + bowlH, cx, topY + bowlH);
     ctx.quadraticCurveTo(cx + bowlW, topY + bowlH, cx + bowlW, topY);
     ctx.closePath();
-  }, "30");
+  }, "56");
   [-1, 1].forEach((side) => {
     ctx.save();
     ctx.shadowColor = "#ffd76b";
@@ -684,10 +684,10 @@ function drawTrophy(ctx, headR, noseCenterX) {
   });
   glowFill(ctx, "#ffd76b", headR * 0.15, Math.max(1, headR * 0.04), () => {
     ctx.rect(cx - headR * 0.07, topY + bowlH, headR * 0.14, headR * 0.3);
-  }, "33");
+  }, "5c");
   glowFill(ctx, "#ffd76b", headR * 0.15, Math.max(1, headR * 0.04), () => {
     ctx.rect(cx - headR * 0.24, topY + bowlH + headR * 0.28, headR * 0.48, headR * 0.1);
-  }, "33");
+  }, "5c");
   hatGem(ctx, cx, topY + bowlH * 0.45, headR * 0.1, "#ff4fd8");
 }
 
