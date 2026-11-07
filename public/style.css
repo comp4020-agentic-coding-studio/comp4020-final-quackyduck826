@@ -142,19 +142,19 @@ legend {
    P = 20%, and the per-swatch negative margin is P - W = -10%. */
 /* `transform` (used below for the diagonal stagger) never affects a box's
    own layout size, so without this the fieldset's auto height came out as
-   if row 2 sat in a plain, un-staggered line below row 1 — two full swatch
-   heights, H each — leaving a dead empty band at the bottom the height of
-   the stagger (H * 33.33%) that the visually-overlapping circles had
-   already vacated. Row 1 spans [0, H] and row 2, pulled up by 33.33% of its
-   own height, visually spans [0.6667H, 1.6667H], so the real content height
-   is 1.6667H; with H itself = 0.3 × this element's own content width (the
-   swatch flex-basis), that's 1.6667 × 0.3 = 0.5 of the width — a 2:1 ratio
-   — so an explicit aspect-ratio hugs the actual circles instead of the
-   taller un-staggered flow height. */
+   if row 2 sat in a plain, un-staggered line below row 1, leaving a dead
+   empty band at the bottom the visually-overlapping circles had already
+   vacated. An explicit aspect-ratio hugs the actual honeycomb layout
+   instead. 1.75/1 rather than the geometry's "clean" 2/1: row 1's own
+   border-box height (line 1's swatch, nth-of-type(1)) comes out a hair
+   taller than the rest because percentage flex-basis rounds up on that one
+   circle, so 2/1 (measured against the *other* seven swatches) left row 2
+   overflowing the fieldset's own padding-box by ~1px; 1.75/1 was checked
+   against a live render and clears it with margin to spare. */
 #colour-picker {
   display: flex; flex-wrap: wrap;
   padding-top: .3rem;
-  aspect-ratio: 2 / 1;
+  aspect-ratio: 1.75 / 1;
 }
 .swatch {
   --stagger-y: 0; --scale: 1;
