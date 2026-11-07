@@ -499,13 +499,21 @@ function drawChefHat(ctx, headR, noseCenterX) {
 // shards, so it reads as a lush crown rather than a sparse ring of spikes.
 function drawLeafCrown(ctx, headR, noseCenterX) {
   const cx = noseCenterX;
-  const leaves = 20;
-  for (let i = 0; i < leaves; i++) {
-    const a = -Math.PI * 0.85 + (i / (leaves - 1)) * Math.PI * 1.7;
-    const lx = cx + Math.cos(a) * headR * 0.8;
-    const ly = Math.sin(a) * headR * 0.8;
-    hatSpike(ctx, lx, ly, headR * 0.34, headR * 0.16, "#b6ff3c", a + Math.PI / 2);
-  }
+  // Two overlapping rings of leaves (offset in both angle and radius) read
+  // as a dense, full wreath rather than a single sparse ring of spikes, even
+  // though it's the same angular span as before.
+  const ringLeaves = 22;
+  [0.78, 0.92].forEach((radiusFactor, ring) => {
+    for (let i = 0; i < ringLeaves; i++) {
+      const a =
+        -Math.PI * 0.85 +
+        (i / (ringLeaves - 1)) * Math.PI * 1.7 +
+        (ring === 1 ? (Math.PI * 1.7) / ringLeaves / 2 : 0);
+      const lx = cx + Math.cos(a) * headR * radiusFactor;
+      const ly = Math.sin(a) * headR * radiusFactor;
+      hatSpike(ctx, lx, ly, headR * 0.3, headR * 0.14, "#b6ff3c", a + Math.PI / 2);
+    }
+  });
   hatGem(ctx, cx + headR * 0.05, headR * 0.08, headR * 0.14, "#ff4fd8");
 }
 
