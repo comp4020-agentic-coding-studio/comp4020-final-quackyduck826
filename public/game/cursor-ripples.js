@@ -17,9 +17,14 @@
 // attention — the same "kept subtle" spirit the old ambient ripples had.
 export const WAKE_COLOURS = ["82, 241, 255", "255, 79, 216", "255, 179, 71", "182, 255, 60"];
 
-const DEFAULT_LIFETIME = 1.1; // seconds for one wake ring to expand and fade out
+const DEFAULT_LIFETIME = 1.7; // seconds for one wake ring to expand and fade out
 const DEFAULT_MAX_RADIUS = 46;
-const DEFAULT_SPAWN_DISTANCE = 70; // min pointer travel before a new ring is stamped, so it reads as a sparse trail, not every-frame noise
+// Min pointer travel before a new ring is stamped, so it reads as a sparse
+// trail, not every-frame noise. Randomised per-ring (within this range)
+// rather than one fixed threshold, so the rings land at uneven, organic
+// spacing along the trail instead of a perfectly even row of dots.
+const DEFAULT_SPAWN_DISTANCE_MIN = 50;
+const DEFAULT_SPAWN_DISTANCE_MAX = 110;
 const DEFAULT_MAX_OPACITY = 0.22;
 
 // Returns a small stateful tracker. Call `update(x, y, dt)` once per frame
@@ -34,13 +39,18 @@ const DEFAULT_MAX_OPACITY = 0.22;
 export function createCursorWake({
   lifetime = DEFAULT_LIFETIME,
   maxRadius = DEFAULT_MAX_RADIUS,
-  spawnDistance = DEFAULT_SPAWN_DISTANCE,
+  spawnDistanceMin = DEFAULT_SPAWN_DISTANCE_MIN,
+  spawnDistanceMax = DEFAULT_SPAWN_DISTANCE_MAX,
   maxOpacity = DEFAULT_MAX_OPACITY,
   colours = WAKE_COLOURS,
 } = {}) {
   let rings = [];
   let lastX = null;
   let lastY = null;
+  // Rolled once up front and re-rolled after each stamp (not read fresh every
+  // frame) so the threshold for the *next* ring stays fixed while the
+  // pointer travels toward it, rather than jittering frame to frame.
+  let nextSpawnDistance = spawnDistanceMin + Math.random() * (spawnDistanceMax - spawnDistanceMin);
 
   function update(x, y, dt) {
     rings.forEach((r) => (r.age += dt));
@@ -50,10 +60,11 @@ export function createCursorWake({
       return;
     }
     const moved = lastX == null ? Infinity : Math.hypot(x - lastX, y - lastY);
-    if (moved >= spawnDistance) {
+    if (moved >= nextSpawnDistance) {
       rings.push({ x, y, age: 0, colour: colours[Math.floor(Math.random() * colours.length)] });
       lastX = x;
       lastY = y;
+      nextSpawnDistance = spawnDistanceMin + Math.random() * (spawnDistanceMax - spawnDistanceMin);
     }
   }
 
