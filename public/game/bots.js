@@ -140,9 +140,14 @@ export function updateBots(state, dt) {
     // Blended in after smoothing, not before: it has to win outright near a
     // wall regardless of whatever the (possibly still-easing) flee heading
     // wants, or a strong flee pull keeps the resulting direction aimed at the
-    // wall anyway and the spin returns.
-    const wall = wallPush(b);
-    if (wall.x || wall.y) {
+    // wall anyway and the spin returns. Skipped while actively chasing a
+    // target (rival or food): that heading already points at a real in-world
+    // position, not an unreachable one past the wall, so there's nothing to
+    // correct — and a bot chasing prey that happens to be sitting right at
+    // the edge needs to actually go get it instead of flinching off toward
+    // open water.
+    const wall = (flee || !target) && wallPush(b);
+    if (wall && (wall.x || wall.y)) {
       hx += wall.x * 2;
       hy += wall.y * 2;
       len = Math.hypot(hx, hy) || 1;
