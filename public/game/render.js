@@ -809,7 +809,7 @@ export function drawFish(ctx, e, outline, showLabel = true) {
     ctx.fill();
   });
 
-  if (e.hat) drawHat(ctx, e.hat, headR, noseCenterX, Math.PI / 2);
+  if (e.hat) drawHat(ctx, e.hat, headR, noseCenterX, -Math.PI / 2);
 
   ctx.restore();
 
