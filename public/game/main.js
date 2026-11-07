@@ -11,7 +11,7 @@ import { startFishPreview } from "./fish-preview.js";
 const $ = (id) => document.getElementById(id);
 const canvas = $("canvas");
 const ctx = canvas.getContext("2d");
-const { readHeading, consumeDash } = createInput(canvas);
+const { readHeading, consumeDash, readPointer } = createInput(canvas);
 let profile = loadProfile();
 let stopPuddleBg = null;
 let stopFishPreview = null;
@@ -129,7 +129,14 @@ function play({ username, colour, wornHat }) {
         $("dash-fill").style.width = `${ready ? 100 : Math.max(0, (1 - remaining / dashCooldown) * 100)}%`;
         $("dash-hint").hidden = !ready;
       }
-      render(ctx, { bots: view.bots, food: view.food }, view.you, view.players, dt);
+      // Pointer from input.js is already screen-relative-to-canvas-centre (see
+      // its `move` handler), and render()'s camera keeps `you` pinned at that
+      // same screen centre (translate(w/2 - you.x, h/2 - you.y)) — so world
+      // position is simply you's world position plus that screen-space
+      // offset, no separate canvas-size lookup needed here.
+      const pointer = readPointer();
+      const pointerWorld = pointer ? { x: view.you.x + pointer.x, y: view.you.y + pointer.y } : null;
+      render(ctx, { bots: view.bots, food: view.food }, view.you, view.players, dt, pointerWorld);
       $("hud").textContent = `Score ${Math.round(view.you.score)}  ${Math.round(elapsed)}s${view.you.locked ? "  (eating locked: only players can be eaten)" : ""}`;
     }
     requestAnimationFrame(frame);

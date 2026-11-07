@@ -1,80 +1,216 @@
 import { COLOURS } from "./profile.js";
 import { WORLD } from "./sim.js";
+import { createCursorWake } from "./cursor-ripples.js";
 
 // The seafloor canvas is bigger than the playable WORLD square: this margin
-// is shoreline, a rocky bank the camera can see past the clamp boundary
+// is shoreline, a neon reef bank the camera can see past the clamp boundary
 // without the water itself extending there. Needs to be generous — on a wide
 // viewport, the camera at a world corner can see well past a thin margin,
 // into the plain canvas background beyond the cached image.
 const BORDER_MARGIN = 480;
-const ROCK_PALETTE = ["#4a463f", "#5c5750", "#3a362f", "#6b6258", "#423e37"];
 
-// An irregular closed polygon around (cx, cy) instead of a circle, so rocks
-// read as rocks and not pebbled dots.
-function rockBlob(ctx, cx, cy, radius, colour) {
-  const points = 9 + Math.floor(Math.random() * 5);
+// Same four accent colours as the home page's --cyan/--pink/--amber/--lime
+// custom properties (duplicated as literals here since this module runs with
+// no DOM/CSSOM access of its own) — every glowing shape below is drawn from
+// this palette rather than the old earthy rock/kelp tones, so the in-game
+// scene reads as the same app as the start screen.
+const NEON_PALETTE = ["#52f1ff", "#ff4fd8", "#ffb347", "#b6ff3c"];
+
+// A narrow faceted shard — a crystal spike rather than a rounded boulder —
+// drawn pointing in local "up" (-y) before rotation. `angle` rotates that tip
+// to face whichever way the caller needs (outward from the water for border
+// reefs, arbitrary for interior accent clusters). Glassy translucent fill
+// plus a glowing stroke instead of a flat earthy colour, so it reads as
+// crystal/energy rather than rock.
+function crystalShard(ctx, cx, cy, height, width, colour, angle = 0) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(angle);
+  ctx.shadowColor = colour;
+  ctx.shadowBlur = height * 0.35;
   ctx.beginPath();
-  for (let i = 0; i <= points; i++) {
-    const a = (i / points) * Math.PI * 2;
-    const r = radius * (0.6 + Math.random() * 0.55);
-    const x = cx + Math.cos(a) * r;
-    const y = cy + Math.sin(a) * r;
+  ctx.moveTo(0, -height);
+  ctx.lineTo(width * 0.5, -height * 0.32);
+  ctx.lineTo(width * 0.32, height * 0.12);
+  ctx.lineTo(-width * 0.32, height * 0.12);
+  ctx.lineTo(-width * 0.5, -height * 0.32);
+  ctx.closePath();
+  ctx.fillStyle = colour + "2e"; // ~18% alpha glassy fill
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = colour;
+  ctx.lineWidth = Math.max(1, width * 0.07);
+  ctx.stroke();
+  // Centre facet line, a brighter vein down the middle of the shard.
+  ctx.beginPath();
+  ctx.moveTo(0, -height * 0.9);
+  ctx.lineTo(0, height * 0.1);
+  ctx.strokeStyle = colour + "99";
+  ctx.lineWidth = Math.max(1, width * 0.035);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// A small glowing hexagon outline — a "tech node" accent used at the centre
+// of each interior reef cluster, echoing the hat menu's hex-ish geometry and
+// the grid floor's straight-edged look rather than anything organic.
+function hexNode(ctx, cx, cy, r, colour) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.shadowColor = colour;
+  ctx.shadowBlur = r * 0.8;
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const x = Math.cos(a) * r;
+    const y = Math.sin(a) * r;
     if (i === 0) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
   }
   ctx.closePath();
-  ctx.fillStyle = colour;
-  ctx.fill();
-  ctx.strokeStyle = "rgba(0, 0, 0, .35)";
-  ctx.lineWidth = Math.max(1, radius * 0.06);
+  ctx.strokeStyle = colour;
+  ctx.lineWidth = Math.max(1.5, r * 0.12);
   ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.restore();
 }
 
-// Scatters rocks along one edge of the WORLD square. `axis` is which way the
-// edge runs ("x" for top/bottom, "y" for left/right); `fixed` is where the
-// shoreline sits on the other axis; `reach` lets rocks stray inward (into the
-// water) or outward (into the margin) from that line. Density and size range
-// are passed per edge so the four sides don't read as one repeating tile.
-function drawEdge(ctx, axis, fixed, start, length, density, [minSize, maxSize], reach) {
-  let along = start - reach;
-  const end = start + length + reach;
+// Rotates the shard template's default "up" (-y) tip to point along the unit
+// direction (outX, outY) once drawn — shared by both the straight edges and
+// the corner clusters below so "away from the water" always maps to the same
+// formula instead of four hand-picked angle constants.
+function outwardAngle(outX, outY) {
+  return Math.atan2(outX, -outY);
+}
+
+// Scatters crystal shards along one edge of the WORLD square, tips pointing
+// outward into the margin/bank. `axis` is which way the edge runs ("x" for
+// top/bottom, "y" for left/right); `fixed` is where the boundary line sits on
+// the other axis; `out` is the unit vector pointing away from the water.
+// Density/size vary per edge so the four sides don't read as one repeating
+// tile, same spirit as the old rocky border.
+function drawReefEdge(ctx, axis, fixed, start, length, density, [minH, maxH], reach, colour, out) {
+  const angle = outwardAngle(out.x, out.y);
+  let along = start - reach * 0.3;
+  const end = start + length + reach * 0.3;
   while (along < end) {
-    const size = minSize + Math.random() * (maxSize - minSize);
-    const across = fixed + (Math.random() * 2 - 1) * reach;
+    const h = minH + Math.random() * (maxH - minH);
+    const w = h * (0.45 + Math.random() * 0.25);
+    const across = fixed + (Math.random() * 2 - 1) * reach * 0.5 + out.x * reach * 0.15 + out.y * reach * 0.15;
     const x = axis === "x" ? along : across;
     const y = axis === "x" ? across : along;
-    rockBlob(ctx, x, y, size, ROCK_PALETTE[Math.floor(Math.random() * ROCK_PALETTE.length)]);
-    along += (size * 0.9) / density;
+    crystalShard(ctx, x, y, h, w, colour, angle + (Math.random() - 0.5) * 0.3);
+    along += (h * 0.7) / density;
   }
 }
 
-// A small cluster rather than one rock, so the corner reads as a joined-up
-// pile instead of a single blob with the two edges' scatters trailing off
-// into bare margin on either side of it. `outX`/`outY` point away from the
-// water, so the cluster spreads into the margin along both adjoining edges.
-function drawCorner(ctx, cx, cy, outX, outY) {
-  rockBlob(ctx, cx, cy, 90 + Math.random() * 70, ROCK_PALETTE[0]);
-  rockBlob(ctx, cx + outX * 90, cy + outY * 40, 65 + Math.random() * 50, ROCK_PALETTE[1]);
-  rockBlob(ctx, cx + outX * 40, cy + outY * 90, 65 + Math.random() * 50, ROCK_PALETTE[2]);
+// A small joined-up cluster of shards plus a hex node, radiating outward from
+// the world's corner, so corners read as a reinforced reef knot rather than
+// two edges just trailing off into bare margin beside each other.
+function drawReefCorner(ctx, cx, cy, outX, outY, colour) {
+  const angle = outwardAngle(outX, outY);
+  hexNode(ctx, cx + outX * 55, cy + outY * 55, 20 + Math.random() * 10, colour);
+  for (let i = 0; i < 5; i++) {
+    const spread = (Math.random() - 0.5) * 1.1;
+    const x = cx + outX * (25 + Math.random() * 60) + (Math.random() - 0.5) * 40;
+    const y = cy + outY * (25 + Math.random() * 60) + (Math.random() - 0.5) * 40;
+    const h = 55 + Math.random() * 70;
+    const w = h * 0.5;
+    crystalShard(ctx, x, y, h, w, colour, angle + spread);
+  }
 }
 
-// Each edge gets its own density/size/reach so the border is deliberately
-// asymmetric, like a real pond's banks: one side a steep pile of boulders,
-// another a gentler scatter of pebbles.
-function drawRockyBorder(ctx, margin, world) {
-  drawEdge(ctx, "x", margin, margin, world, 1.0, [30, 70], 60); // top: close, modest
-  drawEdge(ctx, "x", margin + world, margin, world, 1.25, [45, 110], 100); // bottom: heavier
-  drawEdge(ctx, "y", margin, margin, world, 0.75, [36, 195], 115); // left: sparse, a few big outliers
-  drawEdge(ctx, "y", margin + world, margin, world, 1.5, [63, 175], 150); // right: the dense, chunky bank
-  drawCorner(ctx, margin, margin, -1, -1);
-  drawCorner(ctx, margin + world, margin, 1, -1);
-  drawCorner(ctx, margin, margin + world, -1, 1);
-  drawCorner(ctx, margin + world, margin + world, 1, 1);
+// One accent colour per side (matching the four home-page accents) so the
+// border itself carries the same cyan/pink/amber/lime spread as the start
+// screen's swatches instead of a single uniform rock tone.
+function drawNeonBorder(ctx, margin, world) {
+  drawReefEdge(ctx, "x", margin, margin, world, 1.0, [35, 85], 70, NEON_PALETTE[0], { x: 0, y: -1 }); // top: cyan
+  drawReefEdge(ctx, "x", margin + world, margin, world, 1.2, [45, 110], 95, NEON_PALETTE[1], { x: 0, y: 1 }); // bottom: pink, heavier
+  drawReefEdge(ctx, "y", margin, margin, world, 0.8, [40, 150], 110, NEON_PALETTE[2], { x: -1, y: 0 }); // left: amber, sparse w/ outliers
+  drawReefEdge(ctx, "y", margin + world, margin, world, 1.35, [50, 130], 130, NEON_PALETTE[3], { x: 1, y: 0 }); // right: lime, dense
+  drawReefCorner(ctx, margin, margin, -1, -1, NEON_PALETTE[0]);
+  drawReefCorner(ctx, margin + world, margin, 1, -1, NEON_PALETTE[1]);
+  drawReefCorner(ctx, margin, margin + world, -1, 1, NEON_PALETTE[2]);
+  drawReefCorner(ctx, margin + world, margin + world, 1, 1, NEON_PALETTE[3]);
 }
 
-// The seafloor is a cached world-sized image (rocky bank, water fill, and a
-// handful of large kelp patches), built once and blitted whole each frame
-// rather than redrawn, so it reads as one scene instead of scattered shapes.
+// A thin glowing "force-field" line traced exactly on the WORLD boundary, a
+// canvas echo of the glowing box-shadow borders on .play-card/.panel — reads
+// as a clean edge-of-world line that the reef clusters above then grow out of,
+// rather than the boundary being implied purely by where the rocks stop.
+function drawBoundaryGlow(ctx, margin, world) {
+  ctx.save();
+  ctx.shadowColor = "rgba(82, 241, 255, .8)";
+  ctx.shadowBlur = 30;
+  ctx.strokeStyle = "rgba(82, 241, 255, .45)";
+  ctx.lineWidth = 3;
+  ctx.strokeRect(margin, margin, world, world);
+  ctx.restore();
+}
+
+// Faint square grid across the playable water, a canvas rendition of the
+// start screen's `.grid-floor` CSS perspective grid (flattened to top-down
+// since the camera here isn't angled) plus a soft centred glow echoing
+// `.glow` — texture for the seafloor that still reads as "dark ink + neon
+// lines" rather than a flat empty fill.
+function drawGridFloor(ctx, margin, world) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(margin, margin, world, world);
+  ctx.clip();
+  ctx.strokeStyle = "rgba(82, 241, 255, .09)";
+  ctx.lineWidth = 2;
+  const step = 90;
+  for (let x = margin; x <= margin + world; x += step) {
+    ctx.beginPath();
+    ctx.moveTo(x, margin);
+    ctx.lineTo(x, margin + world);
+    ctx.stroke();
+  }
+  for (let y = margin; y <= margin + world; y += step) {
+    ctx.beginPath();
+    ctx.moveTo(margin, y);
+    ctx.lineTo(margin + world, y);
+    ctx.stroke();
+  }
+  const cx = margin + world / 2;
+  const cy = margin + world / 2;
+  const glow = ctx.createRadialGradient(cx, cy, world * 0.04, cx, cy, world * 0.65);
+  glow.addColorStop(0, "rgba(82, 241, 255, .07)");
+  glow.addColorStop(1, "rgba(6, 34, 47, 0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(margin, margin, world, world);
+  ctx.restore();
+}
+
+// Interior scenery: clusters of small crystal shards around a glowing hex
+// node, scattered across the water — the neon-styled replacement for the old
+// kelp blade patches. Colour is per-cluster (cycling the palette) so the
+// floor carries a mix of accents rather than a single plant tone.
+function drawReefAccents(ctx, margin, world) {
+  const clusters = 10;
+  for (let s = 0; s < clusters; s++) {
+    const cx = margin + Math.random() * world;
+    const cy = margin + Math.random() * world;
+    const colour = NEON_PALETTE[Math.floor(Math.random() * NEON_PALETTE.length)];
+    const shards = 4 + Math.floor(Math.random() * 5);
+    for (let i = 0; i < shards; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 15 + Math.random() * 55;
+      const sx = cx + Math.cos(angle) * dist;
+      const sy = cy + Math.sin(angle) * dist;
+      const h = 26 + Math.random() * 46;
+      const w = h * 0.5;
+      crystalShard(ctx, sx, sy, h, w, colour, angle + Math.PI / 2);
+    }
+    hexNode(ctx, cx, cy, 12 + Math.random() * 10, colour);
+  }
+}
+
+// The seafloor is a cached world-sized image (ink-dark margin, a faint neon
+// grid across the water, scattered crystal reef clusters, and a glowing
+// force-field border), built once and blitted whole each frame rather than
+// redrawn, so it reads as one scene instead of scattered shapes.
 let seafloor = null;
 function buildSeafloor() {
   const size = WORLD + BORDER_MARGIN * 2;
@@ -82,108 +218,88 @@ function buildSeafloor() {
   c.width = size;
   c.height = size;
   const bg = c.getContext("2d");
-  bg.fillStyle = "#2b2521";
+  // Margin (the bank beyond the playable square) in the same dark ink as the
+  // rest of the app — the border reef drawn over it is what marks the edge,
+  // not an earthy colour change.
+  bg.fillStyle = "#04141c";
   bg.fillRect(0, 0, size, size);
   bg.fillStyle = "#0a3548";
   bg.fillRect(BORDER_MARGIN, BORDER_MARGIN, WORLD, WORLD);
   bg.lineCap = "round";
-  const sections = 10;
-  for (let s = 0; s < sections; s++) {
-    const cx = BORDER_MARGIN + Math.random() * WORLD;
-    const cy = BORDER_MARGIN + Math.random() * WORLD;
-    const blades = 8 + Math.floor(Math.random() * 6);
-    for (let i = 0; i < blades; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const len = 120 + Math.random() * 140;
-      const bend = angle + (Math.random() - 0.5) * 0.8;
-      const midX = cx + Math.cos(bend) * len * 0.5;
-      const midY = cy + Math.sin(bend) * len * 0.5;
-      const endX = cx + Math.cos(angle) * len;
-      const endY = cy + Math.sin(angle) * len;
-      bg.strokeStyle = `rgba(${20 + Math.random() * 20}, ${70 + Math.random() * 30}, ${55 + Math.random() * 20}, .5)`;
-      bg.lineWidth = 8 + Math.random() * 10;
-      bg.beginPath();
-      bg.moveTo(cx, cy);
-      bg.quadraticCurveTo(midX, midY, endX, endY);
-      bg.stroke();
-    }
-  }
-  drawRockyBorder(bg, BORDER_MARGIN, WORLD);
+  drawGridFloor(bg, BORDER_MARGIN, WORLD);
+  drawReefAccents(bg, BORDER_MARGIN, WORLD);
+  drawBoundaryGlow(bg, BORDER_MARGIN, WORLD);
+  drawNeonBorder(bg, BORDER_MARGIN, WORLD);
   seafloor = c;
 }
 
-// Gentle rings expanding outward from randomised points across the pond,
-// fading as they grow, respawning elsewhere once done. Drawn in world space
-// (inside the same camera transform as everything else) so they pan with
-// the scene; kept subtle so they never compete with fish/food for attention.
-const RIPPLE_COUNT = 10;
-const RIPPLE_LIFETIME = 5;
-const RIPPLE_COLOURS = ["255, 255, 255", "143, 216, 238"];
-let ripples = null;
+// Cursor wake: unlike the old ambient ripples (random points across the
+// whole pond, visible to everyone via the shared seafloor), this trail only
+// ever reads the local player's own pointer and is drawn fresh each frame —
+// pure client-side presentation, never sent to or derived from the server,
+// so only the local player ever sees their own wake. Kept subtle (see
+// cursor-ripples.js's defaults) so it never competes with fish/food for
+// attention. Module-level singleton like the old `ripples` array was, since
+// there's only ever one local player's cursor to track per page.
+const cursorWake = createCursorWake();
 
-function spawnRipple() {
-  return {
-    x: Math.random() * WORLD,
-    y: Math.random() * WORLD,
-    age: 0,
-    delay: Math.random() * 3,
-    maxRadius: 70 + Math.random() * 170,
-    colour: RIPPLE_COLOURS[Math.floor(Math.random() * RIPPLE_COLOURS.length)],
-  };
-}
-
-function drawRipples(ctx, dt) {
-  if (!ripples) ripples = Array.from({ length: RIPPLE_COUNT }, spawnRipple);
-  for (const r of ripples) {
-    if (r.delay > 0) {
-      r.delay -= dt;
-      continue;
-    }
-    r.age += dt;
-    if (r.age > RIPPLE_LIFETIME) {
-      Object.assign(r, spawnRipple(), { delay: Math.random() * 2 });
-      continue;
-    }
-    const t = r.age / RIPPLE_LIFETIME;
-    const radius = r.maxRadius * t;
-    const opacity = (1 - t) * 0.22;
-    // Two close rings read as one bolder band rather than a thin line.
-    [0, 6].forEach((offset) => {
-      ctx.beginPath();
-      ctx.strokeStyle = `rgba(${r.colour}, ${opacity})`;
-      ctx.lineWidth = 2.5;
-      ctx.arc(r.x, r.y, Math.max(0, radius - offset), 0, Math.PI * 2);
-      ctx.stroke();
-    });
-  }
-}
-
-// Tiny seaweed sprig instead of a plain dot: a few curved blades round a base,
-// in plant tones rather than the fish palette. Angles come from the food's own
-// id so each sprig looks the same from frame to frame without extra state.
-const PLANT_COLOURS = ["#2ec4b6", "#4caf50", "#3b9c6b", "#1f7a5c"];
+// A small glowing spark/gem instead of a plant sprig: a faceted diamond core
+// in one of the four home-page accent colours, a soft glow halo around it,
+// and a few short radiating sparkle lines through the facets — reads as a
+// pickup of energy rather than vegetation, and the glow makes it legible as
+// a small bright dot even at the tiny sizes it's drawn at in-game. `f.id`
+// (same trick the old sprig used) picks the colour and spins the facet/
+// sparkle angles so items don't all look identical, without needing any
+// per-item state beyond what `f` already carries.
 const drawFood = (ctx, f) => {
-  const shade = PLANT_COLOURS[f.id % PLANT_COLOURS.length];
-  const bladeLen = f.size * 1.8;
-  ctx.strokeStyle = shade;
-  ctx.lineWidth = Math.max(1, f.size * 0.4);
-  ctx.lineCap = "round";
-  for (let i = 0; i < 3; i++) {
-    const angle = ((f.id * 53 + i * 120) * Math.PI) / 180;
-    const bend = angle + 0.4;
-    const midX = f.x + Math.cos(bend) * bladeLen * 0.5;
-    const midY = f.y + Math.sin(bend) * bladeLen * 0.5;
-    const endX = f.x + Math.cos(angle) * bladeLen;
-    const endY = f.y + Math.sin(angle) * bladeLen;
-    ctx.beginPath();
-    ctx.moveTo(f.x, f.y);
-    ctx.quadraticCurveTo(midX, midY, endX, endY);
-    ctx.stroke();
-  }
+  const colour = NEON_PALETTE[f.id % NEON_PALETTE.length];
+  const rot = ((f.id * 37) % 360) * (Math.PI / 180);
+  const r = f.size * 0.9;
+
+  // Soft outer glow halo, cheap at this size (a single radial-gradient fill)
+  // rather than a real shadowBlur per item — keeps ~70 on-screen food items
+  // affordable per frame.
+  const halo = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, r * 2.2);
+  halo.addColorStop(0, colour + "66");
+  halo.addColorStop(1, colour + "00");
+  ctx.fillStyle = halo;
   ctx.beginPath();
-  ctx.fillStyle = shade;
-  ctx.arc(f.x, f.y, f.size * 0.35, 0, Math.PI * 2);
+  ctx.arc(f.x, f.y, r * 2.2, 0, Math.PI * 2);
   ctx.fill();
+
+  // Faceted diamond core: four points, alternating long/short radius so it
+  // reads as a cut gem rather than a plain rotated square.
+  ctx.save();
+  ctx.translate(f.x, f.y);
+  ctx.rotate(rot);
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const rr = i % 2 === 0 ? r : r * 0.45;
+    const x = Math.cos(a) * rr;
+    const y = Math.sin(a) * rr;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fillStyle = colour;
+  ctx.fill();
+  // Bright core and a crossing sparkle, both white so the very centre reads
+  // as hot/bright against the coloured facets around it.
+  ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.22, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255, 255, 255, .8)";
+  ctx.lineWidth = Math.max(0.6, r * 0.12);
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.9, 0);
+  ctx.lineTo(r * 0.9, 0);
+  ctx.moveTo(0, -r * 0.9);
+  ctx.lineTo(0, r * 0.9);
+  ctx.stroke();
+  ctx.restore();
 };
 
 // Bite pop effects: a quick expanding ring plus a few flung fragments at the
@@ -231,242 +347,288 @@ function drawBites(ctx, dt) {
 // planted on the head rather than needing its own position tracking. All take
 // (ctx, headR, noseCenterX) and are centred so they sit within the head's own
 // silhouette, reading as worn rather than stuck on.
+//
+// Redesigned to match the neon synth/arcade palette the home screen and the
+// (separately redone) in-game map/food now use: glassy translucent panels
+// with a glowing coloured stroke, in the same cyan/pink/amber/lime accents as
+// --cyan/--pink/--amber/--lime in style.css, rather than the old flat earthy
+// hat-shop colours. Three small shared helpers below do the fill+glow+stroke
+// and spike/gem shapes every hat is built from, so the ten renderers stay
+// short and visually consistent with each other.
 
-// Crown: gold three-peak crown — the original, pre-existing hat.
-function drawCrown(ctx, headR, noseCenterX) {
-  const cx = noseCenterX - headR * 0.15;
-  const halfW = headR * 0.8;
-  const baseX = cx - headR * 0.1;
-  const peakX = cx + headR * 0.55;
-  const midPeakX = cx + headR * 0.75;
-  const dipX = cx + headR * 0.15;
-
+// Fills the path drawn by `pathFn` with a translucent, glowing version of
+// `colour`, then strokes it in the full colour — the glassy-crystal fill +
+// glow-stroke combo the map/food redesign uses, kept as a one-off local
+// helper here (rather than reusing that module's own crystalShard/hexNode)
+// so hat code stays independent of the map code.
+function glowFill(ctx, colour, blur, lineWidth, pathFn, fillAlpha = "33") {
   ctx.beginPath();
-  ctx.moveTo(baseX, -halfW);
-  ctx.lineTo(peakX, -halfW * 0.6);
-  ctx.lineTo(dipX, -halfW * 0.25);
-  ctx.lineTo(midPeakX, 0);
-  ctx.lineTo(dipX, halfW * 0.25);
-  ctx.lineTo(peakX, halfW * 0.6);
-  ctx.lineTo(baseX, halfW);
+  pathFn();
+  ctx.shadowColor = colour;
+  ctx.shadowBlur = blur;
+  ctx.fillStyle = colour + fillAlpha;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = colour;
+  ctx.lineWidth = lineWidth;
+  ctx.stroke();
+}
+
+// A narrow glowing spike/shard for crown points, horns, feathers and similar
+// pointed accents — points toward local "up" (-y) before `angle` rotates it.
+function hatSpike(ctx, x, y, h, w, colour, angle = 0) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.shadowColor = colour;
+  ctx.shadowBlur = h * 0.4;
+  ctx.beginPath();
+  ctx.moveTo(0, -h);
+  ctx.lineTo(w * 0.5, h * 0.18);
+  ctx.lineTo(-w * 0.5, h * 0.18);
   ctx.closePath();
-  ctx.fillStyle = "#ffd76b";
+  ctx.fillStyle = colour + "40";
   ctx.fill();
-  ctx.strokeStyle = "#8a5a00";
-  ctx.lineWidth = Math.max(1, headR * 0.05);
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = colour;
+  ctx.lineWidth = Math.max(1, w * 0.12);
   ctx.stroke();
+  ctx.restore();
 }
 
-// Survivalist: khaki wide round brim (a flattened ellipse) with a low olive
-// dome on top.
-function drawSurvivalistHat(ctx, headR, noseCenterX) {
-  const cx = noseCenterX - headR * 0.1;
+// A small faceted glowing gem (echoes drawFood's diamond core) used as a
+// crown/medal/trophy centrepiece — a bright jewel rather than a flat dot.
+function hatGem(ctx, cx, cy, r, colour) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.shadowColor = colour;
+  ctx.shadowBlur = r * 1.1;
   ctx.beginPath();
-  ctx.ellipse(cx, 0, headR * 0.95, headR * 0.55, 0, 0, Math.PI * 2);
-  ctx.fillStyle = "#8a7a4a";
-  ctx.fill();
-  ctx.strokeStyle = "#5f5330";
-  ctx.lineWidth = Math.max(1, headR * 0.04);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.ellipse(cx, 0, headR * 0.55, headR * 0.4, 0, Math.PI, 0);
-  ctx.fillStyle = "#6b7f3f";
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(cx, 0, headR * 0.55, headR * 0.4, 0, 0, Math.PI, true);
-  ctx.strokeStyle = "#4a5a2b";
-  ctx.lineWidth = Math.max(1, headR * 0.06);
-  ctx.stroke();
-}
-
-// Glutton: white chef's toque — a few overlapping rounded humps on a thin
-// white band.
-function drawChefHat(ctx, headR, noseCenterX) {
-  const cx = noseCenterX;
-  ctx.fillStyle = "#f2f2f2";
-  ctx.strokeStyle = "#c8c8c8";
-  ctx.lineWidth = Math.max(1, headR * 0.03);
-  ctx.beginPath();
-  ctx.rect(cx - headR * 0.6, -headR * 0.25, headR * 1.2, headR * 0.3);
-  ctx.fill();
-  ctx.stroke();
-  [-0.4, 0, 0.4].forEach((off) => {
-    ctx.beginPath();
-    ctx.arc(cx + headR * off, -headR * 0.35, headR * 0.4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-  });
-}
-
-// Herbivore: a ring of small leaf shapes around a headband arc, with a
-// couple of small flower-dot accents.
-function drawLeafCrown(ctx, headR, noseCenterX) {
-  const cx = noseCenterX - headR * 0.1;
-  const leaves = 6;
-  for (let i = 0; i < leaves; i++) {
-    const a = -Math.PI * 0.75 + (i / (leaves - 1)) * Math.PI * 1.5;
-    const lx = cx + Math.cos(a) * headR * 0.85;
-    const ly = Math.sin(a) * headR * 0.85;
-    ctx.save();
-    ctx.translate(lx, ly);
-    ctx.rotate(a + Math.PI / 2);
-    ctx.beginPath();
-    ctx.ellipse(0, 0, headR * 0.12, headR * 0.26, 0, 0, Math.PI * 2);
-    ctx.fillStyle = "#4caf50";
-    ctx.fill();
-    ctx.restore();
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 - Math.PI / 2;
+    const rr = i % 2 === 0 ? r : r * 0.45;
+    const px = Math.cos(a) * rr;
+    const py = Math.sin(a) * rr;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
   }
-  [-0.35, 0.35].forEach((off) => {
-    ctx.beginPath();
-    ctx.arc(cx + headR * off, -headR * 0.75, headR * 0.1, 0, Math.PI * 2);
-    ctx.fillStyle = off < 0 ? "#f472b6" : "#ffd76b";
-    ctx.fill();
-  });
-}
-
-// Dash Master: a small orange cap with speed-chevron strokes trailing off
-// the back (toward the tail), suggesting motion.
-function drawDashCap(ctx, headR, noseCenterX) {
-  const cx = noseCenterX - headR * 0.1;
-  ctx.beginPath();
-  ctx.ellipse(cx, -headR * 0.1, headR * 0.6, headR * 0.45, 0, Math.PI, 0);
-  ctx.fillStyle = "#ff7a33";
-  ctx.fill();
-  ctx.strokeStyle = "#b3451c";
-  ctx.lineWidth = Math.max(1, headR * 0.04);
-  ctx.stroke();
-  ctx.strokeStyle = "#ffb347";
-  ctx.lineWidth = Math.max(1, headR * 0.08);
-  ctx.lineCap = "round";
-  [-0.3, 0, 0.3].forEach((off) => {
-    ctx.beginPath();
-    ctx.moveTo(cx - headR * 0.7, off * headR);
-    ctx.lineTo(cx - headR * 1.1, off * headR * 1.4);
-    ctx.stroke();
-  });
-}
-
-// Player Hunter: a dark tricorn silhouette (one upturned peak) with a small
-// red feather accent.
-function drawTricorn(ctx, headR, noseCenterX) {
-  const cx = noseCenterX - headR * 0.05;
-  ctx.beginPath();
-  ctx.moveTo(cx - headR * 0.9, headR * 0.3);
-  ctx.quadraticCurveTo(cx - headR * 0.3, -headR * 0.9, cx + headR * 0.3, -headR * 0.5);
-  ctx.quadraticCurveTo(cx + headR * 0.9, -headR * 0.2, cx + headR * 0.8, headR * 0.35);
-  ctx.quadraticCurveTo(cx, headR * 0.1, cx - headR * 0.9, headR * 0.3);
   ctx.closePath();
-  ctx.fillStyle = "#1c2430";
+  ctx.fillStyle = colour;
   ctx.fill();
-  ctx.strokeStyle = "#000";
-  ctx.lineWidth = Math.max(1, headR * 0.04);
-  ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "#fff";
+  ctx.globalAlpha = 0.85;
   ctx.beginPath();
-  ctx.moveTo(cx + headR * 0.1, -headR * 0.6);
-  ctx.quadraticCurveTo(cx + headR * 0.5, -headR * 1.1, cx + headR * 0.3, -headR * 1.3);
-  ctx.strokeStyle = "#c0392b";
-  ctx.lineWidth = Math.max(1, headR * 0.1);
-  ctx.lineCap = "round";
-  ctx.stroke();
+  ctx.arc(0, 0, r * 0.25, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.restore();
 }
 
-// Giant Slayer: a simplified viking helmet — a grey/silver dome with two
-// curved horns sweeping outward from the sides.
-function drawVikingHelmet(ctx, headR, noseCenterX) {
-  const cx = noseCenterX - headR * 0.1;
-  ctx.beginPath();
-  ctx.arc(cx, 0, headR * 0.7, Math.PI, 0);
-  ctx.fillStyle = "#9aa0a6";
-  ctx.fill();
-  ctx.strokeStyle = "#5a5f66";
+// Crown: a glowing crystal diadem — a low cyan circlet band hugging the head
+// with a tall cyan centre shard flanked by two shorter amber shards, and a
+// pink gem set into the band. Reads as "royalty" via height/symmetry rather
+// than a gold colour.
+function drawCrown(ctx, headR, noseCenterX) {
+  const cx = noseCenterX - headR * 0.25;
+  glowFill(ctx, "#52f1ff", headR * 0.3, Math.max(1, headR * 0.06), () => {
+    ctx.ellipse(cx, headR * 0.05, headR * 0.95, headR * 0.3, 0, Math.PI * 1.08, Math.PI * 1.92);
+  }, "26");
+  hatSpike(ctx, cx + headR * 0.05, -headR * 0.08, headR * 0.85, headR * 0.4, "#52f1ff");
+  hatSpike(ctx, cx - headR * 0.55, headR * 0.08, headR * 0.5, headR * 0.3, "#ffb347", -0.3);
+  hatSpike(ctx, cx + headR * 0.55, headR * 0.08, headR * 0.5, headR * 0.3, "#ffb347", 0.3);
+  hatGem(ctx, cx + headR * 0.05, headR * 0.1, headR * 0.15, "#ff4fd8");
+}
+
+// Survivalist: a wide-brimmed explorer/pith helmet — a glowing lime brim
+// disc with a lower amber dome on top and a thin crossing strap, reading as
+// rugged expedition gear rather than a plain round hat.
+function drawSurvivalistHat(ctx, headR, noseCenterX) {
+  const cx = noseCenterX - headR * 0.15;
+  glowFill(ctx, "#b6ff3c", headR * 0.3, Math.max(1, headR * 0.05), () => {
+    ctx.ellipse(cx, 0, headR * 1.0, headR * 0.5, 0, 0, Math.PI * 2);
+  }, "1f");
+  glowFill(ctx, "#ffb347", headR * 0.25, Math.max(1, headR * 0.05), () => {
+    ctx.arc(cx, -headR * 0.02, headR * 0.58, Math.PI, 0);
+  }, "30");
+  ctx.strokeStyle = "#b6ff3c";
   ctx.lineWidth = Math.max(1, headR * 0.05);
+  ctx.beginPath();
+  ctx.moveTo(cx - headR * 0.58, -headR * 0.02);
+  ctx.lineTo(cx + headR * 0.58, -headR * 0.02);
   ctx.stroke();
+  hatGem(ctx, cx, -headR * 0.32, headR * 0.1, "#b6ff3c");
+}
+
+// Glutton: a glowing white/cyan geometric toque — a thin band topped by three
+// faceted upward shards fanned together, standing tall like a chef's puff
+// instead of the old round humps.
+function drawChefHat(ctx, headR, noseCenterX) {
+  const cx = noseCenterX - headR * 0.2;
+  glowFill(ctx, "#52f1ff", headR * 0.2, Math.max(1, headR * 0.05), () => {
+    ctx.rect(cx - headR * 0.65, -headR * 0.14, headR * 1.3, headR * 0.26);
+  }, "22");
+  hatSpike(ctx, cx - headR * 0.42, -headR * 0.1, headR * 0.6, headR * 0.4, "#e8fbff", -0.12);
+  hatSpike(ctx, cx, -headR * 0.14, headR * 0.82, headR * 0.46, "#e8fbff");
+  hatSpike(ctx, cx + headR * 0.42, -headR * 0.1, headR * 0.6, headR * 0.4, "#e8fbff", 0.12);
+}
+
+// Herbivore: a laurel-style circlet of thin lime crystal leaf-shards arcing
+// around the head, with a small flower-gem accent at the front centre.
+function drawLeafCrown(ctx, headR, noseCenterX) {
+  const cx = noseCenterX - headR * 0.2;
+  const leaves = 7;
+  for (let i = 0; i < leaves; i++) {
+    const a = -Math.PI * 0.8 + (i / (leaves - 1)) * Math.PI * 1.6;
+    const lx = cx + Math.cos(a) * headR * 0.8;
+    const ly = Math.sin(a) * headR * 0.8;
+    hatSpike(ctx, lx, ly, headR * 0.42, headR * 0.2, "#b6ff3c", a + Math.PI / 2);
+  }
+  hatGem(ctx, cx + headR * 0.05, headR * 0.08, headR * 0.14, "#ff4fd8");
+}
+
+// Dash Master: an amber crystal baseball cap — an angled dome plus a sharp
+// shard-like brim jutting forward, a lightning-bolt gem on the front panel,
+// and glowing speed-chevrons trailing off the back.
+function drawDashCap(ctx, headR, noseCenterX) {
+  const cx = noseCenterX - headR * 0.25;
+  glowFill(ctx, "#ffb347", headR * 0.3, Math.max(1, headR * 0.05), () => {
+    ctx.arc(cx, -headR * 0.05, headR * 0.62, Math.PI, 0);
+  }, "2e");
+  glowFill(ctx, "#ffb347", headR * 0.2, Math.max(1, headR * 0.05), () => {
+    ctx.moveTo(cx + headR * 0.3, -headR * 0.02);
+    ctx.lineTo(cx + headR * 0.95, headR * 0.1);
+    ctx.lineTo(cx + headR * 0.55, headR * 0.18);
+    ctx.closePath();
+  }, "33");
+  hatGem(ctx, cx - headR * 0.05, -headR * 0.28, headR * 0.1, "#52f1ff");
+  ctx.strokeStyle = "#52f1ff";
+  ctx.lineWidth = Math.max(1, headR * 0.07);
   ctx.lineCap = "round";
-  [-1, 1].forEach((side) => {
+  ctx.shadowColor = "#52f1ff";
+  ctx.shadowBlur = headR * 0.2;
+  [-0.25, 0.05, 0.35].forEach((off) => {
     ctx.beginPath();
-    ctx.moveTo(cx, -side * headR * 0.1);
-    ctx.quadraticCurveTo(cx - headR * 0.9, -side * headR * 0.5, cx - headR * 0.75, -side * headR * 0.9);
-    ctx.strokeStyle = "#e8e4d8";
-    ctx.lineWidth = Math.max(1, headR * 0.12);
+    ctx.moveTo(cx - headR * 0.6, off * headR);
+    ctx.lineTo(cx - headR * 1.05, off * headR * 1.3);
     ctx.stroke();
+  });
+  ctx.shadowBlur = 0;
+}
+
+// Player Hunter: a pink crystal tricorn — three angular faceted panels
+// folded into the classic three-cornered silhouette, with a cyan shard
+// "feather" swept back off the rear peak.
+function drawTricorn(ctx, headR, noseCenterX) {
+  const cx = noseCenterX - headR * 0.3;
+  glowFill(ctx, "#ff4fd8", headR * 0.35, Math.max(1, headR * 0.06), () => {
+    ctx.moveTo(cx - headR * 0.85, headR * 0.2);
+    ctx.lineTo(cx - headR * 0.25, -headR * 0.75);
+    ctx.lineTo(cx + headR * 0.3, -headR * 0.35);
+    ctx.lineTo(cx + headR * 0.78, headR * 0.3);
+    ctx.lineTo(cx + headR * 0.05, headR * 0.05);
+    ctx.lineTo(cx - headR * 0.85, headR * 0.2);
+  }, "30");
+  hatSpike(ctx, cx - headR * 0.25, -headR * 0.75, headR * 0.3, headR * 0.6, "#ff4fd8");
+  hatSpike(ctx, cx + headR * 0.3, -headR * 0.35, headR * 0.25, headR * 0.5, "#ff4fd8", 0.2);
+  hatSpike(ctx, cx + headR * 0.35, -headR * 0.5, headR * 0.55, headR * 0.16, "#52f1ff", 0.9);
+}
+
+// Giant Slayer: a faceted crystal viking helmet — a cyan-silver domed shell
+// with two curved amber crystal horns sweeping outward from the sides.
+function drawVikingHelmet(ctx, headR, noseCenterX) {
+  const cx = noseCenterX - headR * 0.15;
+  glowFill(ctx, "#52f1ff", headR * 0.3, Math.max(1, headR * 0.05), () => {
+    ctx.arc(cx, 0, headR * 0.68, Math.PI, 0);
+  }, "26");
+  glowFill(ctx, "#52f1ff", headR * 0.15, Math.max(1, headR * 0.03), () => {
+    ctx.moveTo(cx, -headR * 0.68);
+    ctx.lineTo(cx, 0);
+  }, "00");
+  [-1, 1].forEach((side) => {
+    ctx.save();
+    ctx.translate(cx - headR * 0.1, side * headR * 0.15);
+    ctx.shadowColor = "#ffb347";
+    ctx.shadowBlur = headR * 0.3;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(-headR * 0.55, side * headR * 0.1, -headR * 0.75, side * headR * 0.75);
+    ctx.quadraticCurveTo(-headR * 0.35, side * headR * 0.35, -headR * 0.18, headR * 0.08);
+    ctx.closePath();
+    ctx.fillStyle = "#ffb34740";
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = "#ffb347";
+    ctx.lineWidth = Math.max(1, headR * 0.06);
+    ctx.stroke();
+    ctx.restore();
   });
 }
 
-// Veteran: a weathered brown fedora — narrower brim than the Survivalist
-// hat's, darker colour, with a tiny worn-patch mark reading as well-used.
+// Veteran: a glowing amber fedora — a wide brim ring with a lower, slightly
+// dimmer crown dome and a crease band, a muted "well-worn" tone next to the
+// brighter hats rather than a flashy one.
 function drawFedora(ctx, headR, noseCenterX) {
-  const cx = noseCenterX - headR * 0.1;
-  ctx.beginPath();
-  ctx.ellipse(cx, 0, headR * 0.75, headR * 0.35, 0, 0, Math.PI * 2);
-  ctx.fillStyle = "#6b4a2b";
-  ctx.fill();
-  ctx.strokeStyle = "#45301b";
+  const cx = noseCenterX - headR * 0.15;
+  glowFill(ctx, "#ffb347", headR * 0.22, Math.max(1, headR * 0.05), () => {
+    ctx.ellipse(cx, 0, headR * 0.85, headR * 0.35, 0, 0, Math.PI * 2);
+  }, "22");
+  glowFill(ctx, "#ffb347", headR * 0.18, Math.max(1, headR * 0.04), () => {
+    ctx.ellipse(cx, -headR * 0.05, headR * 0.48, headR * 0.42, 0, Math.PI, 0);
+  }, "2e");
+  ctx.strokeStyle = "#ffe8c4";
   ctx.lineWidth = Math.max(1, headR * 0.04);
-  ctx.stroke();
   ctx.beginPath();
-  ctx.ellipse(cx, -headR * 0.05, headR * 0.45, headR * 0.45, 0, Math.PI, 0);
-  ctx.fillStyle = "#523823";
-  ctx.fill();
-  // A tiny worn-patch mark (an X-stitch) on the crown.
-  ctx.strokeStyle = "#d8c9a0";
-  ctx.lineWidth = Math.max(1, headR * 0.03);
-  const px = cx + headR * 0.15;
-  ctx.beginPath();
-  ctx.moveTo(px - headR * 0.06, -headR * 0.28);
-  ctx.lineTo(px + headR * 0.06, -headR * 0.16);
-  ctx.moveTo(px + headR * 0.06, -headR * 0.28);
-  ctx.lineTo(px - headR * 0.06, -headR * 0.16);
+  ctx.moveTo(cx + headR * 0.15, -headR * 0.45);
+  ctx.lineTo(cx + headR * 0.15, -headR * 0.08);
   ctx.stroke();
 }
 
-// Leaderboard Entrant: a small bronze medal disc above the head with a thin
-// rim and a tiny star mark.
+// Leaderboard Entrant: a glowing amber circlet headband (worn low on the
+// head, not floating above it) with a faceted medallion gem set at the
+// front centre.
 function drawMedal(ctx, headR, noseCenterX) {
   const cx = noseCenterX - headR * 0.1;
-  const cy = -headR * 0.9;
-  const r = headR * 0.35;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fillStyle = "#cd7f32";
-  ctx.fill();
-  ctx.strokeStyle = "#8a5522";
-  ctx.lineWidth = Math.max(1, headR * 0.04);
-  ctx.stroke();
-  drawStar(ctx, cx, cy, r * 0.55, "#eecb9a");
+  glowFill(ctx, "#ffb347", headR * 0.25, Math.max(1, headR * 0.06), () => {
+    ctx.ellipse(cx, headR * 0.05, headR * 0.9, headR * 0.3, 0, Math.PI * 1.05, Math.PI * 1.95);
+  }, "22");
+  hatGem(ctx, cx + headR * 0.1, headR * 0.08, headR * 0.26, "#ffb347");
+  drawStar(ctx, cx + headR * 0.1, headR * 0.08, headR * 0.12, "#fff4de");
 }
 
-// Leaderboard Leader: a small gold trophy-cup silhouette (bowl + two handle
-// loops + a stem/base) — deliberately a different shape family from Crown.
+// Leaderboard Leader: a glowing crystal trophy worn as a tall topper — a
+// faceted gold cup with two glowing handle loops on a short stem, the
+// tallest and most elaborate hat, visually distinct from Crown's spiky
+// diadem via its rounded cup silhouette.
 function drawTrophy(ctx, headR, noseCenterX) {
-  const cx = noseCenterX - headR * 0.1;
-  const topY = -headR * 1.3;
-  const bowlW = headR * 0.5;
-  const bowlH = headR * 0.45;
-  ctx.fillStyle = "#ffd76b";
-  ctx.strokeStyle = "#a8841f";
-  ctx.lineWidth = Math.max(1, headR * 0.04);
-
-  ctx.beginPath();
-  ctx.moveTo(cx - bowlW, topY);
-  ctx.quadraticCurveTo(cx - bowlW, topY + bowlH, cx, topY + bowlH);
-  ctx.quadraticCurveTo(cx + bowlW, topY + bowlH, cx + bowlW, topY);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-
+  const cx = noseCenterX - headR * 0.3;
+  const topY = -headR * 0.95;
+  const bowlW = headR * 0.42;
+  const bowlH = headR * 0.4;
+  glowFill(ctx, "#ffd76b", headR * 0.3, Math.max(1, headR * 0.05), () => {
+    ctx.moveTo(cx - bowlW, topY);
+    ctx.quadraticCurveTo(cx - bowlW, topY + bowlH, cx, topY + bowlH);
+    ctx.quadraticCurveTo(cx + bowlW, topY + bowlH, cx + bowlW, topY);
+    ctx.closePath();
+  }, "30");
   [-1, 1].forEach((side) => {
+    ctx.save();
+    ctx.shadowColor = "#ffd76b";
+    ctx.shadowBlur = headR * 0.2;
+    ctx.strokeStyle = "#ffd76b";
+    ctx.lineWidth = Math.max(1, headR * 0.05);
     ctx.beginPath();
-    ctx.ellipse(cx + side * bowlW * 1.3, topY + bowlH * 0.3, bowlW * 0.35, bowlH * 0.4, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx + side * bowlW * 1.25, topY + bowlH * 0.3, bowlW * 0.3, bowlH * 0.38, 0, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.restore();
   });
-
-  ctx.beginPath();
-  ctx.rect(cx - headR * 0.08, topY + bowlH, headR * 0.16, headR * 0.3);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.rect(cx - headR * 0.25, topY + bowlH + headR * 0.3, headR * 0.5, headR * 0.12);
-  ctx.fill();
-  ctx.stroke();
+  glowFill(ctx, "#ffd76b", headR * 0.15, Math.max(1, headR * 0.04), () => {
+    ctx.rect(cx - headR * 0.07, topY + bowlH, headR * 0.14, headR * 0.3);
+  }, "33");
+  glowFill(ctx, "#ffd76b", headR * 0.15, Math.max(1, headR * 0.04), () => {
+    ctx.rect(cx - headR * 0.24, topY + bowlH + headR * 0.28, headR * 0.48, headR * 0.1);
+  }, "33");
+  hatGem(ctx, cx, topY + bowlH * 0.45, headR * 0.1, "#ff4fd8");
 }
 
 function drawStar(ctx, cx, cy, r, colour) {
@@ -650,7 +812,12 @@ export function drawFish(ctx, e, outline, showLabel = true) {
 // `you` is the camera target, drawn with a thick white outline; `others` is
 // every other real player currently in the world, drawn with a thinner gold
 // ring and gold name label so a real rival reads differently from a bot.
-export function render(ctx, state, you, others, dt = 1 / 60) {
+// `pointerWorld`, if given, is the local player's cursor position already
+// converted to world coordinates (main.js does that conversion using the
+// same w/2 - you.x camera math below, since it's the one that knows the raw
+// screen-space pointer) — used only to drive the local cursor-wake trail, so
+// it's optional and simply omitted/null if the caller has no pointer info.
+export function render(ctx, state, you, others, dt = 1 / 60, pointerWorld = null) {
   // CSS-pixel size, not the (possibly device-pixel-scaled) backing-store
   // width/height: the context already carries a dpr scale transform set once
   // in main.js's resize(), so measurements here must stay in the same CSS-pixel
@@ -662,7 +829,8 @@ export function render(ctx, state, you, others, dt = 1 / 60) {
   ctx.translate(w / 2 - you.x, h / 2 - you.y);
   if (!seafloor) buildSeafloor();
   ctx.drawImage(seafloor, -BORDER_MARGIN, -BORDER_MARGIN);
-  drawRipples(ctx, dt);
+  cursorWake.update(pointerWorld?.x, pointerWorld?.y, dt);
+  cursorWake.draw(ctx);
   state.food.forEach((f) => drawFood(ctx, f));
   state.bots.forEach((b) => drawFish(ctx, b, false));
   others.forEach((o) => drawFish(ctx, o, "player"));

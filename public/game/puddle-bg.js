@@ -1,36 +1,10 @@
-// A quiet animated backdrop for the start screen: a handful of concentric
-// ripple rings expand outward from randomised points and fade as they grow,
-// each respawning elsewhere once it's done. Plain 2D canvas, no assets,
-// matching the drawing style used by render.js for the in-game scene.
-const RING_COLOURS = ["143, 216, 238", "59, 122, 143", "255, 179, 71"];
-const RIPPLE_COUNT = 6;
-const LIFETIME = 4.5; // seconds for a ripple to fully expand and fade out
-
-function spawnRipple(w, h) {
-  return {
-    x: Math.random() * w,
-    y: Math.random() * h,
-    age: 0,
-    delay: Math.random() * 3,
-    maxRadius: 90 + Math.random() * 220,
-    colour: RING_COLOURS[Math.floor(Math.random() * RING_COLOURS.length)],
-  };
-}
-
-function drawRipple(ctx, r) {
-  const t = r.age / LIFETIME;
-  const radius = r.maxRadius * t;
-  const opacity = (1 - t) * 0.3;
-  // Two close rings per ripple read as a soft water ring rather than a
-  // single thin line, without needing a gradient fill.
-  [0, 10].forEach((offset) => {
-    ctx.beginPath();
-    ctx.strokeStyle = `rgba(${r.colour}, ${opacity})`;
-    ctx.lineWidth = 1.5;
-    ctx.arc(r.x, r.y, Math.max(0, radius - offset), 0, Math.PI * 2);
-    ctx.stroke();
-  });
-}
+// A quiet animated backdrop for the start screen: plain 2D canvas, no assets,
+// matching the drawing style used by render.js for the in-game scene. The
+// ambient ripple rings this used to spawn at random points have been replaced
+// by a cursor-wake trail (see cursor-ripples.js) tracking the mouse over the
+// whole viewport — same effect render.js now uses in-game, just fed screen
+// coordinates directly since this canvas isn't a world-camera view.
+import { createCursorWake } from "./cursor-ripples.js";
 
 // Oversized versions of the in-game food sprig (see render.js's drawFood):
 // the same three-curved-blades-round-a-base shape, scaled way up and rooted
@@ -90,7 +64,18 @@ export function startPuddleBackground(canvasId = "puddle-bg") {
   resize();
   addEventListener("resize", resize);
 
-  const ripples = Array.from({ length: RIPPLE_COUNT }, () => spawnRipple(canvas.width, canvas.height));
+  // Screen-space pointer (plain clientX/Y relative to the canvas, which
+  // covers the whole viewport per its CSS rule) tracked the same way
+  // fish-preview.js's onMove does, fed straight into the shared cursor-wake
+  // tracker each frame — no world/camera conversion needed here since this
+  // background isn't a world-camera view.
+  const wake = createCursorWake();
+  let pointer = null;
+  function onMove(ev) {
+    const r = canvas.getBoundingClientRect();
+    pointer = { x: ev.clientX - r.left, y: ev.clientY - r.top };
+  }
+  addEventListener("pointermove", onMove);
 
   let last = performance.now();
   let elapsed = 0;
@@ -106,18 +91,8 @@ export function startPuddleBackground(canvasId = "puddle-bg") {
 
     seaweeds.forEach((s) => drawSeaweed(ctx, s, elapsed));
 
-    ripples.forEach((r) => {
-      if (r.delay > 0) {
-        r.delay -= dt;
-        return;
-      }
-      r.age += dt;
-      if (r.age > LIFETIME) {
-        Object.assign(r, spawnRipple(w, h), { delay: Math.random() * 2 });
-        return;
-      }
-      drawRipple(ctx, r);
-    });
+    wake.update(pointer?.x, pointer?.y, dt);
+    wake.draw(ctx);
 
     requestAnimationFrame(frame);
   }
@@ -126,5 +101,6 @@ export function startPuddleBackground(canvasId = "puddle-bg") {
   return () => {
     running = false;
     removeEventListener("resize", resize);
+    removeEventListener("pointermove", onMove);
   };
 }
