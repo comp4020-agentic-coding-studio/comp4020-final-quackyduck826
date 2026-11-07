@@ -444,7 +444,7 @@ function hatGem(ctx, cx, cy, r, colour) {
 // pink gem set into the band. Reads as "royalty" via height/symmetry rather
 // than a gold colour.
 function drawCrown(ctx, headR, noseCenterX) {
-  const cx = noseCenterX - headR * 0.25;
+  const cx = noseCenterX;
   glowFill(ctx, "#52f1ff", headR * 0.3, Math.max(1, headR * 0.06), () => {
     ctx.ellipse(cx, headR * 0.05, headR * 0.95, headR * 0.3, 0, Math.PI * 1.08, Math.PI * 1.92);
   }, "26");
@@ -458,7 +458,7 @@ function drawCrown(ctx, headR, noseCenterX) {
 // disc with a lower amber dome on top and a thin crossing strap, reading as
 // rugged expedition gear rather than a plain round hat.
 function drawSurvivalistHat(ctx, headR, noseCenterX) {
-  const cx = noseCenterX - headR * 0.15;
+  const cx = noseCenterX;
   glowFill(ctx, "#b6ff3c", headR * 0.3, Math.max(1, headR * 0.05), () => {
     ctx.ellipse(cx, 0, headR * 1.0, headR * 0.5, 0, 0, Math.PI * 2);
   }, "1f");
@@ -478,7 +478,7 @@ function drawSurvivalistHat(ctx, headR, noseCenterX) {
 // cluster of round glowing puffs, like a chef's hat crown, instead of
 // pointed shards.
 function drawChefHat(ctx, headR, noseCenterX) {
-  const cx = noseCenterX - headR * 0.2;
+  const cx = noseCenterX;
   glowFill(ctx, "#52f1ff", headR * 0.2, Math.max(1, headR * 0.05), () => {
     ctx.rect(cx - headR * 0.65, -headR * 0.14, headR * 1.3, headR * 0.26);
   }, "22");
@@ -498,7 +498,7 @@ function drawChefHat(ctx, headR, noseCenterX) {
 // wreath density (lots of overlapping leaves) rather than a few spaced-out
 // shards, so it reads as a lush crown rather than a sparse ring of spikes.
 function drawLeafCrown(ctx, headR, noseCenterX) {
-  const cx = noseCenterX - headR * 0.2;
+  const cx = noseCenterX;
   const leaves = 20;
   for (let i = 0; i < leaves; i++) {
     const a = -Math.PI * 0.85 + (i / (leaves - 1)) * Math.PI * 1.7;
@@ -513,7 +513,7 @@ function drawLeafCrown(ctx, headR, noseCenterX) {
 // shard-like brim jutting forward, a lightning-bolt gem on the front panel,
 // and glowing speed-chevrons trailing off the back.
 function drawDashCap(ctx, headR, noseCenterX) {
-  const cx = noseCenterX - headR * 0.25;
+  const cx = noseCenterX;
   glowFill(ctx, "#ffb347", headR * 0.3, Math.max(1, headR * 0.05), () => {
     ctx.arc(cx, -headR * 0.05, headR * 0.62, Math.PI, 0);
   }, "2e");
@@ -542,7 +542,7 @@ function drawDashCap(ctx, headR, noseCenterX) {
 // folded into the classic three-cornered silhouette, with a cyan shard
 // "feather" swept back off the rear peak.
 function drawTricorn(ctx, headR, noseCenterX) {
-  const cx = noseCenterX - headR * 0.3;
+  const cx = noseCenterX;
   glowFill(ctx, "#ff4fd8", headR * 0.35, Math.max(1, headR * 0.06), () => {
     ctx.moveTo(cx - headR * 0.85, headR * 0.2);
     ctx.lineTo(cx - headR * 0.25, -headR * 0.75);
@@ -559,7 +559,7 @@ function drawTricorn(ctx, headR, noseCenterX) {
 // Giant Slayer: a faceted crystal viking helmet — a cyan-silver domed shell
 // with two curved amber crystal horns sweeping outward from the sides.
 function drawVikingHelmet(ctx, headR, noseCenterX) {
-  const cx = noseCenterX - headR * 0.15;
+  const cx = noseCenterX;
   glowFill(ctx, "#52f1ff", headR * 0.3, Math.max(1, headR * 0.05), () => {
     ctx.arc(cx, 0, headR * 0.68, Math.PI, 0);
   }, "26");
@@ -591,7 +591,7 @@ function drawVikingHelmet(ctx, headR, noseCenterX) {
 // dimmer crown dome and a crease band, a muted "well-worn" tone next to the
 // brighter hats rather than a flashy one.
 function drawFedora(ctx, headR, noseCenterX) {
-  const cx = noseCenterX - headR * 0.15;
+  const cx = noseCenterX;
   glowFill(ctx, "#ffb347", headR * 0.22, Math.max(1, headR * 0.05), () => {
     ctx.ellipse(cx, 0, headR * 0.85, headR * 0.35, 0, 0, Math.PI * 2);
   }, "22");
@@ -610,7 +610,7 @@ function drawFedora(ctx, headR, noseCenterX) {
 // head, not floating above it) with a faceted medallion gem hanging at the
 // front centre, directly below the string's lowest point.
 function drawMedal(ctx, headR, noseCenterX) {
-  const cx = noseCenterX - headR * 0.1;
+  const cx = noseCenterX;
   glowFill(ctx, "#ffb347", headR * 0.25, Math.max(1, headR * 0.06), () => {
     ctx.ellipse(cx, headR * 0.05, headR * 0.9, headR * 0.3, 0, Math.PI * 1.05, Math.PI * 1.95);
   }, "22");
@@ -623,7 +623,7 @@ function drawMedal(ctx, headR, noseCenterX) {
 // tallest and most elaborate hat, visually distinct from Crown's spiky
 // diadem via its rounded cup silhouette.
 function drawTrophy(ctx, headR, noseCenterX) {
-  const cx = noseCenterX - headR * 0.3;
+  const cx = noseCenterX;
   const topY = -headR * 0.95;
   const bowlW = headR * 0.42;
   const bowlH = headR * 0.4;
@@ -694,11 +694,24 @@ const HAT_RENDERERS = {
 const HAT_SCALE = 0.75;
 const HAT_BACK_SHIFT = 0.4;
 
+// Each hat's own forward/back nudge (toward the tail, in headR units) used to
+// live inside its renderer as `cx = noseCenterX - headR * K`. That ran after
+// `extraRotation` below, so a nose-tail nudge got rotated into a sideways one
+// whenever a hat was drawn on a (rotated) fish, throwing it off-centre. Moved
+// here so it's folded into the same pre-rotation translate as HAT_BACK_SHIFT
+// and always stays along the fish's true nose-tail axis.
+const HAT_NUDGE = {
+  crown: 0.25, survivalist: 0.15, glutton: 0.2, herbivore: 0.2,
+  dashMaster: 0.25, playerHunter: 0.3, giantSlayer: 0.15, veteran: 0.15,
+  leaderboardEntrant: 0.1, leaderboardLeader: 0.3,
+};
+
 export function drawHat(ctx, hatId, headR, noseCenterX, extraRotation = 0) {
   const renderer = HAT_RENDERERS[hatId];
   if (!renderer) return;
+  const nudge = HAT_NUDGE[hatId] ?? 0;
   ctx.save();
-  ctx.translate(noseCenterX - headR * HAT_BACK_SHIFT, 0);
+  ctx.translate(noseCenterX - headR * (HAT_BACK_SHIFT + nudge * HAT_SCALE), 0);
   if (extraRotation) ctx.rotate(extraRotation);
   ctx.scale(HAT_SCALE, HAT_SCALE);
   renderer(ctx, headR, 0);
