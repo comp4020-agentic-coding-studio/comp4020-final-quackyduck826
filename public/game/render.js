@@ -567,15 +567,19 @@ function drawVikingHelmet(ctx, headR, noseCenterX) {
     ctx.moveTo(cx, -headR * 0.68);
     ctx.lineTo(cx, 0);
   }, "00");
+  // Horn roots sit right on the dome's curved edge (its widest point, where
+  // the arc meets the flat base) rather than near the centre strap, then
+  // sweep outward and up — reading as growing out of the helmet's curve
+  // instead of crossing in front of it.
   [-1, 1].forEach((side) => {
     ctx.save();
-    ctx.translate(cx - headR * 0.1, side * headR * 0.15);
+    ctx.translate(cx + side * headR * 0.58, -headR * 0.04);
     ctx.shadowColor = "#ffb347";
     ctx.shadowBlur = headR * 0.3;
     ctx.beginPath();
     ctx.moveTo(0, 0);
-    ctx.quadraticCurveTo(-headR * 0.55, side * headR * 0.1, -headR * 0.75, side * headR * 0.75);
-    ctx.quadraticCurveTo(-headR * 0.35, side * headR * 0.35, -headR * 0.18, side * headR * 0.08);
+    ctx.quadraticCurveTo(side * headR * 0.1, -headR * 0.5, side * headR * 0.55, -headR * 0.8);
+    ctx.quadraticCurveTo(side * headR * 0.35, -headR * 0.38, side * headR * 0.08, -headR * 0.1);
     ctx.closePath();
     ctx.fillStyle = "#ffb34740";
     ctx.fill();
