@@ -4,10 +4,16 @@ import { createCursorWake } from "./cursor-ripples.js";
 
 // The seafloor canvas is bigger than the playable WORLD square: this margin
 // is shoreline, a neon reef bank the camera can see past the clamp boundary
-// without the water itself extending there. Needs to be generous — on a wide
-// viewport, the camera at a world corner can see well past a thin margin,
-// into the plain canvas background beyond the cached image.
-const BORDER_MARGIN = 480;
+// without the water itself extending there. Needs to be generous — the
+// camera centres on the player, so with a fish clamped right at the world
+// edge the margin must cover at least half the viewport's width/height or
+// the view runs past the cached image into the plain canvas background
+// before the reef does, visibly "ending" the border. 1400 comfortably covers
+// browser windows up to ~2800px wide/tall (full HD and most large-monitor
+// windows); #canvas's own CSS background is matched to the margin's own ink
+// fill (see buildSeafloor) so even a wider viewport than that degrades into
+// more of the same dark void instead of a visible seam into the water tone.
+const BORDER_MARGIN = 1400;
 
 // Same four accent colours as the home page's --cyan/--pink/--amber/--lime
 // custom properties (duplicated as literals here since this module runs with
@@ -89,6 +95,14 @@ function outwardAngle(outX, outY) {
 // the other axis; `out` is the unit vector pointing away from the water.
 // Density/size vary per edge so the four sides don't read as one repeating
 // tile, same spirit as the old rocky border.
+//
+// After rotation, a shard's `width` is its extent along the edge direction
+// (crystalShard's local x-axis, which `outwardAngle` always rotates onto the
+// edge's own running direction, whichever axis that is) — so stepping along
+// by less than the just-drawn shard's own width guarantees its footprint
+// overlaps the next one, leaving no bare gap of open margin between them
+// regardless of how `density` scales the spacing.
+const EDGE_OVERLAP = 0.55;
 function drawReefEdge(ctx, axis, fixed, start, length, density, [minH, maxH], reach, colour, out) {
   const angle = outwardAngle(out.x, out.y);
   let along = start - reach * 0.3;
@@ -100,7 +114,7 @@ function drawReefEdge(ctx, axis, fixed, start, length, density, [minH, maxH], re
     const x = axis === "x" ? along : across;
     const y = axis === "x" ? across : along;
     crystalShard(ctx, x, y, h, w, colour, angle + (Math.random() - 0.5) * 0.3);
-    along += (h * 0.7) / density;
+    along += (w * EDGE_OVERLAP) / density;
   }
 }
 
@@ -114,7 +128,7 @@ function drawReefCorner(ctx, cx, cy, outX, outY, colour) {
     const spread = (Math.random() - 0.5) * 1.1;
     const x = cx + outX * (25 + Math.random() * 60) + (Math.random() - 0.5) * 40;
     const y = cy + outY * (25 + Math.random() * 60) + (Math.random() - 0.5) * 40;
-    const h = 55 + Math.random() * 70;
+    const h = 80 + Math.random() * 100;
     const w = h * 0.5;
     crystalShard(ctx, x, y, h, w, colour, angle + spread);
   }
@@ -124,10 +138,10 @@ function drawReefCorner(ctx, cx, cy, outX, outY, colour) {
 // border itself carries the same cyan/pink/amber/lime spread as the start
 // screen's swatches instead of a single uniform rock tone.
 function drawNeonBorder(ctx, margin, world) {
-  drawReefEdge(ctx, "x", margin, margin, world, 1.0, [35, 85], 70, NEON_PALETTE[0], { x: 0, y: -1 }); // top: cyan
-  drawReefEdge(ctx, "x", margin + world, margin, world, 1.2, [45, 110], 95, NEON_PALETTE[1], { x: 0, y: 1 }); // bottom: pink, heavier
-  drawReefEdge(ctx, "y", margin, margin, world, 0.8, [40, 150], 110, NEON_PALETTE[2], { x: -1, y: 0 }); // left: amber, sparse w/ outliers
-  drawReefEdge(ctx, "y", margin + world, margin, world, 1.35, [50, 130], 130, NEON_PALETTE[3], { x: 1, y: 0 }); // right: lime, dense
+  drawReefEdge(ctx, "x", margin, margin, world, 1.0, [55, 125], 70, NEON_PALETTE[0], { x: 0, y: -1 }); // top: cyan
+  drawReefEdge(ctx, "x", margin + world, margin, world, 1.2, [70, 160], 95, NEON_PALETTE[1], { x: 0, y: 1 }); // bottom: pink, heavier
+  drawReefEdge(ctx, "y", margin, margin, world, 0.8, [60, 210], 110, NEON_PALETTE[2], { x: -1, y: 0 }); // left: amber, sparse w/ outliers
+  drawReefEdge(ctx, "y", margin + world, margin, world, 1.35, [75, 185], 130, NEON_PALETTE[3], { x: 1, y: 0 }); // right: lime, dense
   drawReefCorner(ctx, margin, margin, -1, -1, NEON_PALETTE[0]);
   drawReefCorner(ctx, margin + world, margin, 1, -1, NEON_PALETTE[1]);
   drawReefCorner(ctx, margin, margin + world, -1, 1, NEON_PALETTE[2]);

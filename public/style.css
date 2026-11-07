@@ -276,7 +276,13 @@ a:hover, a:focus-visible { text-shadow: 0 0 8px rgba(82, 241, 255, .7); }
 
 /* ---------- in-game screen (unchanged flow, same palette) ---------- */
 #game { max-width: none; padding: 0; position: fixed; inset: 0; }
-canvas { width: 100%; height: 100%; display: block; background: #0a3548; touch-action: none; }
+canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+/* Matches the seafloor's own margin fill (render.js's buildSeafloor, #04141c)
+   rather than the water's lighter blue: on a viewport wide/tall enough to see
+   past even the cached seafloor image's margin, this is what shows beyond it,
+   and matching tones means that edge reads as more of the same dark void
+   instead of a visible seam into a different colour. */
+#canvas { background: #04141c; }
 #hud { position: absolute; top: .8rem; left: .8rem; font-weight: 700; text-shadow: 0 1px 3px #000; }
 #give-up {
   position: absolute; top: .8rem; right: .8rem;

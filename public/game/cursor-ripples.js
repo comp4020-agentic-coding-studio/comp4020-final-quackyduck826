@@ -19,7 +19,7 @@ export const WAKE_COLOURS = ["82, 241, 255", "255, 79, 216", "255, 179, 71", "18
 
 const DEFAULT_LIFETIME = 1.1; // seconds for one wake ring to expand and fade out
 const DEFAULT_MAX_RADIUS = 46;
-const DEFAULT_SPAWN_DISTANCE = 18; // min pointer travel before a new ring is stamped, so it reads as a trail, not every-frame noise
+const DEFAULT_SPAWN_DISTANCE = 70; // min pointer travel before a new ring is stamped, so it reads as a sparse trail, not every-frame noise
 const DEFAULT_MAX_OPACITY = 0.22;
 
 // Returns a small stateful tracker. Call `update(x, y, dt)` once per frame
