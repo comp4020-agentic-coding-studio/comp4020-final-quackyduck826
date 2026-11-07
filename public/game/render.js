@@ -497,19 +497,37 @@ function drawChefHat(ctx, headR, noseCenterX) {
 // around the head, with a small flower-gem accent at the front centre. Full
 // wreath density (lots of overlapping leaves) rather than a few spaced-out
 // shards, so it reads as a lush crown rather than a sparse ring of spikes.
+// Deterministic 0..1 pseudo-random from an integer seed (no Math.random,
+// since this hat redraws every frame — a real random would make the leaves
+// jitter in place instead of holding a stable messy arrangement).
+function leafRand(seed) {
+  const x = Math.sin(seed * 12.9898) * 43758.5453;
+  return x - Math.floor(x);
+}
+
 function drawLeafCrown(ctx, headR, noseCenterX) {
   const cx = noseCenterX;
   // Two overlapping rings of leaves (offset in both angle and radius), each
   // going the full 360° rather than stopping short partway round, so the
   // leaves actually close into a ring instead of leaving a gap at the back
-  // of the head.
+  // of the head. Each leaf's angle, radius, size and tilt get a small
+  // per-leaf jitter so the wreath reads as loosely scattered foliage rather
+  // than a mechanically even ring of identical shards.
   const ringLeaves = 24;
   [0.78, 0.92].forEach((radiusFactor, ring) => {
     for (let i = 0; i < ringLeaves; i++) {
-      const a = (i / ringLeaves) * Math.PI * 2 + (ring === 1 ? Math.PI / ringLeaves : 0);
-      const lx = cx + Math.cos(a) * headR * radiusFactor;
-      const ly = Math.sin(a) * headR * radiusFactor;
-      hatSpike(ctx, lx, ly, headR * 0.3, headR * 0.14, "#b6ff3c", a + Math.PI / 2);
+      const seed = ring * 100 + i;
+      const a =
+        (i / ringLeaves) * Math.PI * 2 +
+        (ring === 1 ? Math.PI / ringLeaves : 0) +
+        (leafRand(seed) - 0.5) * ((Math.PI * 2) / ringLeaves) * 0.8;
+      const r = headR * radiusFactor * (0.9 + leafRand(seed + 0.5) * 0.2);
+      const lx = cx + Math.cos(a) * r;
+      const ly = Math.sin(a) * r;
+      const h = headR * 0.3 * (0.75 + leafRand(seed + 0.7) * 0.5);
+      const w = headR * 0.14 * (0.75 + leafRand(seed + 0.3) * 0.5);
+      const tilt = (leafRand(seed + 0.9) - 0.5) * 0.6;
+      hatSpike(ctx, lx, ly, h, w, "#b6ff3c", a + Math.PI / 2 + tilt);
     }
   });
   hatGem(ctx, cx + headR * 0.05, headR * 0.08, headR * 0.14, "#ff4fd8");
