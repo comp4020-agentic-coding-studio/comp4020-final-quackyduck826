@@ -474,29 +474,37 @@ function drawSurvivalistHat(ctx, headR, noseCenterX) {
   hatGem(ctx, cx, -headR * 0.32, headR * 0.1, "#b6ff3c");
 }
 
-// Glutton: a glowing white/cyan geometric toque — a thin band topped by three
-// faceted upward shards fanned together, standing tall like a chef's puff
-// instead of the old round humps.
+// Glutton: a glowing white/cyan geometric toque — a thin band topped by a
+// cluster of round glowing puffs, like a chef's hat crown, instead of
+// pointed shards.
 function drawChefHat(ctx, headR, noseCenterX) {
   const cx = noseCenterX - headR * 0.2;
   glowFill(ctx, "#52f1ff", headR * 0.2, Math.max(1, headR * 0.05), () => {
     ctx.rect(cx - headR * 0.65, -headR * 0.14, headR * 1.3, headR * 0.26);
   }, "22");
-  hatSpike(ctx, cx - headR * 0.42, -headR * 0.1, headR * 0.6, headR * 0.4, "#e8fbff", -0.12);
-  hatSpike(ctx, cx, -headR * 0.14, headR * 0.82, headR * 0.46, "#e8fbff");
-  hatSpike(ctx, cx + headR * 0.42, -headR * 0.1, headR * 0.6, headR * 0.4, "#e8fbff", 0.12);
+  [
+    [-0.42, -headR * 0.28, headR * 0.3],
+    [0, -headR * 0.42, headR * 0.38],
+    [0.42, -headR * 0.28, headR * 0.3],
+  ].forEach(([xOff, y, r]) => {
+    glowFill(ctx, "#e8fbff", headR * 0.25, Math.max(1, headR * 0.05), () => {
+      ctx.arc(cx + xOff * headR, y, r, 0, Math.PI * 2);
+    }, "33");
+  });
 }
 
 // Herbivore: a laurel-style circlet of thin lime crystal leaf-shards arcing
-// around the head, with a small flower-gem accent at the front centre.
+// around the head, with a small flower-gem accent at the front centre. Full
+// wreath density (lots of overlapping leaves) rather than a few spaced-out
+// shards, so it reads as a lush crown rather than a sparse ring of spikes.
 function drawLeafCrown(ctx, headR, noseCenterX) {
   const cx = noseCenterX - headR * 0.2;
-  const leaves = 7;
+  const leaves = 20;
   for (let i = 0; i < leaves; i++) {
-    const a = -Math.PI * 0.8 + (i / (leaves - 1)) * Math.PI * 1.6;
+    const a = -Math.PI * 0.85 + (i / (leaves - 1)) * Math.PI * 1.7;
     const lx = cx + Math.cos(a) * headR * 0.8;
     const ly = Math.sin(a) * headR * 0.8;
-    hatSpike(ctx, lx, ly, headR * 0.42, headR * 0.2, "#b6ff3c", a + Math.PI / 2);
+    hatSpike(ctx, lx, ly, headR * 0.34, headR * 0.16, "#b6ff3c", a + Math.PI / 2);
   }
   hatGem(ctx, cx + headR * 0.05, headR * 0.08, headR * 0.14, "#ff4fd8");
 }
@@ -567,7 +575,7 @@ function drawVikingHelmet(ctx, headR, noseCenterX) {
     ctx.beginPath();
     ctx.moveTo(0, 0);
     ctx.quadraticCurveTo(-headR * 0.55, side * headR * 0.1, -headR * 0.75, side * headR * 0.75);
-    ctx.quadraticCurveTo(-headR * 0.35, side * headR * 0.35, -headR * 0.18, headR * 0.08);
+    ctx.quadraticCurveTo(-headR * 0.35, side * headR * 0.35, -headR * 0.18, side * headR * 0.08);
     ctx.closePath();
     ctx.fillStyle = "#ffb34740";
     ctx.fill();
@@ -599,15 +607,15 @@ function drawFedora(ctx, headR, noseCenterX) {
 }
 
 // Leaderboard Entrant: a glowing amber circlet headband (worn low on the
-// head, not floating above it) with a faceted medallion gem set at the
-// front centre.
+// head, not floating above it) with a faceted medallion gem hanging at the
+// front centre, directly below the string's lowest point.
 function drawMedal(ctx, headR, noseCenterX) {
   const cx = noseCenterX - headR * 0.1;
   glowFill(ctx, "#ffb347", headR * 0.25, Math.max(1, headR * 0.06), () => {
     ctx.ellipse(cx, headR * 0.05, headR * 0.9, headR * 0.3, 0, Math.PI * 1.05, Math.PI * 1.95);
   }, "22");
-  hatGem(ctx, cx + headR * 0.1, headR * 0.08, headR * 0.26, "#ffb347");
-  drawStar(ctx, cx + headR * 0.1, headR * 0.08, headR * 0.12, "#fff4de");
+  hatGem(ctx, cx, headR * 0.35, headR * 0.26, "#ffb347");
+  drawStar(ctx, cx, headR * 0.35, headR * 0.12, "#fff4de");
 }
 
 // Leaderboard Leader: a glowing crystal trophy worn as a tall topper — a
@@ -686,11 +694,12 @@ const HAT_RENDERERS = {
 const HAT_SCALE = 0.75;
 const HAT_BACK_SHIFT = 0.4;
 
-export function drawHat(ctx, hatId, headR, noseCenterX) {
+export function drawHat(ctx, hatId, headR, noseCenterX, extraRotation = 0) {
   const renderer = HAT_RENDERERS[hatId];
   if (!renderer) return;
   ctx.save();
   ctx.translate(noseCenterX - headR * HAT_BACK_SHIFT, 0);
+  if (extraRotation) ctx.rotate(extraRotation);
   ctx.scale(HAT_SCALE, HAT_SCALE);
   renderer(ctx, headR, 0);
   ctx.restore();
@@ -800,7 +809,7 @@ export function drawFish(ctx, e, outline, showLabel = true) {
     ctx.fill();
   });
 
-  if (e.hat) drawHat(ctx, e.hat, headR, noseCenterX);
+  if (e.hat) drawHat(ctx, e.hat, headR, noseCenterX, Math.PI / 2);
 
   ctx.restore();
 
