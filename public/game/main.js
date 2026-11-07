@@ -2,7 +2,7 @@ import { createInput } from "./input.js";
 import { resetLiveboard, updateLiveboard } from "./liveboard.js";
 import { connect, interpolate } from "./net.js";
 import { loadProfile, recordRun, saveProfile } from "./profile.js";
-import { render, triggerBite } from "./render.js";
+import { getZoom, render, resetZoom, triggerBite } from "./render.js";
 import { DASH_DURATION, DASH_PENALTY_DURATION } from "./sim.js";
 import { HATS, initStart, showBest, showLeaderboard } from "./start.js";
 import { startPuddleBackground } from "./puddle-bg.js";
@@ -54,6 +54,7 @@ function play({ username, colour, wornHat }) {
   stopFishPreview?.();
   stopFishPreview = null;
   resize();
+  resetZoom();
   resetLiveboard();
   $("dash-bar").hidden = true;
   $("dash-hint").hidden = true;
@@ -131,11 +132,15 @@ function play({ username, colour, wornHat }) {
       }
       // Pointer from input.js is already screen-relative-to-canvas-centre (see
       // its `move` handler), and render()'s camera keeps `you` pinned at that
-      // same screen centre (translate(w/2 - you.x, h/2 - you.y)) — so world
-      // position is simply you's world position plus that screen-space
-      // offset, no separate canvas-size lookup needed here.
+      // same screen centre (translate(w/2, h/2), scale(zoom), translate(-you.x,
+      // -you.y)) — so world position is you's world position plus that
+      // screen-space offset scaled down by the current zoom (a screen pixel
+      // covers less world space the more zoomed in the camera is). Reads
+      // getZoom() from the *previous* frame's render() call, one frame stale,
+      // which is fine since zoom eases smoothly rather than jumping.
       const pointer = readPointer();
-      const pointerWorld = pointer ? { x: view.you.x + pointer.x, y: view.you.y + pointer.y } : null;
+      const zoom = getZoom();
+      const pointerWorld = pointer ? { x: view.you.x + pointer.x / zoom, y: view.you.y + pointer.y / zoom } : null;
       render(ctx, { bots: view.bots, food: view.food }, view.you, view.players, dt, pointerWorld);
       $("hud").textContent = `Score ${Math.round(view.you.score)}  ${Math.round(elapsed)}s${view.you.locked ? "  (eating locked: only players can be eaten)" : ""}`;
     }
