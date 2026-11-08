@@ -51,6 +51,7 @@ interface Player extends Entity {
   score: number;
   maxSize: number;
   joinedAt: number;
+  invulnTimer: number;
   crowned: boolean;
   // Which hat this player chose to wear this run, whitelisted against the
   // known hat ids the same way colour is whitelisted; null = none worn.
@@ -316,6 +317,7 @@ function publicPlayer(p: Player) {
     id: p.id, x: p.x, y: p.y, angle: p.angle, tailWag: p.tailWag, size: p.size,
     colour: p.colour, name: p.name, score: p.score, locked: eatingLocked(p),
     dashTimer: p.dashTimer, dashPenaltyTimer: p.dashPenaltyTimer, isPlayer: true,
+    invulnerable: p.invulnTimer > 0,
     // Echoed from the start of the run, not gated on re-earning it within
     // the run (see the wornHat field comment above) — every connected
     // client renders whatever hat this player chose, visible to everyone,

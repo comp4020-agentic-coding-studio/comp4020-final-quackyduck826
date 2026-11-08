@@ -305,6 +305,11 @@ canvas { width: 100%; height: 100%; display: block; touch-action: none; }
   font-size: .9rem; font-weight: 400; line-height: 1;
 }
 #gameover { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; background: #000a; }
+/* Painted behind the title/stats/button purely by DOM order (it's the first
+   child, no z-index needed) — death-fx.js only ever draws particles on it,
+   so there's nothing to layer above except that default. */
+#gameover-fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#gameover > *:not(#gameover-fx) { position: relative; }
 #connection-lost {
   position: fixed; inset: 0; display: grid; place-content: center; text-align: center;
   background: var(--ink); max-width: 24rem; margin: 0 auto; padding: 0 1rem;
@@ -322,20 +327,66 @@ canvas { width: 100%; height: 100%; display: block; touch-action: none; }
 #liveboard li { counter-increment: rank; white-space: nowrap; }
 #liveboard li::before { content: counter(rank) ". "; opacity: .7; }
 #liveboard li.me { font-weight: 700; }
+/* Overflow left visible (not `hidden` like the old single-child version) so
+   #dash-hint, positioned above via `bottom: 100%`, isn't clipped by this
+   element's own box; #dash-fill gets its own inner `overflow: hidden` below
+   instead, to keep clipping the fill bar's corners to the pill shape. */
 #dash-bar {
   position: absolute; bottom: 1.2rem; left: 50%; transform: translateX(-50%);
   width: 10rem; height: .6rem;
+}
+#dash-track {
+  width: 100%; height: 100%;
   background: rgba(232, 246, 250, .15);
   border: 1px solid rgba(232, 246, 250, .4);
   border-radius: 999px;
   overflow: hidden;
 }
 #dash-fill { height: 100%; width: 0%; background: var(--amber); transition: width .1s linear; }
+/* Hides itself once a dash has happened this run (main.js toggles [hidden]),
+   rather than the whole bar — the bar itself stays visible from the start of
+   every run so cooldown is always legible, even before a first dash. */
 #dash-hint {
-  position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
-  margin-top: .35rem; font-size: .7rem; white-space: nowrap;
+  position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+  margin-bottom: .35rem; font-size: .75rem; font-weight: 600; white-space: nowrap;
   text-shadow: 0 1px 3px #000; opacity: .9;
 }
+
+/* Touch controls: shown only on coarse-pointer (touch) devices, toggled via
+   [hidden] by main.js using a matchMedia("(pointer: coarse)") check rather
+   than pure CSS, since input.js also needs to know at runtime whether to
+   read the joystick instead of pointer/keyboard. */
+#touch-controls { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+#joystick-zone {
+  position: absolute; left: 1.2rem; bottom: 1.2rem;
+  width: 8.5rem; height: 8.5rem;
+  pointer-events: auto; touch-action: none;
+}
+#joystick-base {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  background: rgba(232, 246, 250, .1);
+  border: 2px solid rgba(232, 246, 250, .4);
+}
+#joystick-thumb {
+  position: absolute; left: 50%; top: 50%;
+  width: 3.4rem; height: 3.4rem; margin: -1.7rem;
+  border-radius: 50%;
+  background: rgba(82, 241, 255, .35);
+  border: 2px solid var(--cyan);
+  box-shadow: 0 0 14px rgba(82, 241, 255, .5);
+  transition: transform .05s linear;
+}
+#dash-btn {
+  position: absolute; right: 1.4rem; bottom: 1.6rem;
+  width: 4.6rem; height: 4.6rem;
+  border-radius: 50%; border: 2px solid var(--amber);
+  background: rgba(255, 179, 71, .25);
+  color: #06222f; font-weight: 700; font-size: .85rem; letter-spacing: .03em;
+  box-shadow: 0 0 16px rgba(255, 179, 71, .45);
+  pointer-events: auto; touch-action: none;
+}
+#dash-btn:active { background: rgba(255, 179, 71, .5); transform: scale(.94); }
 
 /* buttons in the in-game screen keep the simpler pre-revamp look; only the
    start screen gets the loud treatment above */

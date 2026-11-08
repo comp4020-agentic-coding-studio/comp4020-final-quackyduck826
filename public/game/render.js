@@ -1081,6 +1081,12 @@ export function drawFish(ctx, e, outline, showLabel = true) {
   ctx.save();
   ctx.translate(e.x, e.y);
   ctx.rotate(e.angle);
+  // Spawn-protection flash: a freshly-joined player can't be eaten for a few
+  // seconds (sim.js's INVULN_DURATION/isInvulnerable), echoed to every
+  // client as the `invulnerable` flag on the broadcast snapshot — flickered
+  // via wall-clock time rather than a per-entity age (not sent to clients)
+  // so it's a pure presentation effect with no state of its own to track.
+  if (e.invulnerable) ctx.globalAlpha = 0.45 + 0.35 * Math.sin(performance.now() / 90);
 
   // Tail, drawn first so the body overlaps its joint. The two segments
   // overlap and share a small wag-phase lag so they read as one flexing

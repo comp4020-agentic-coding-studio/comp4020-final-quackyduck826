@@ -1,4 +1,5 @@
-import { createInput } from "./input.js";
+import { playConfettiBurst, playGutsExplosion } from "./death-fx.js";
+import { createInput, isTouchDevice, setupTouchControls } from "./input.js";
 import { resetLiveboard, updateLiveboard } from "./liveboard.js";
 import { connect, interpolate } from "./net.js";
 import { loadProfile, recordRun, saveProfile } from "./profile.js";
@@ -11,10 +12,25 @@ import { startFishPreview } from "./fish-preview.js";
 const $ = (id) => document.getElementById(id);
 const canvas = $("canvas");
 const ctx = canvas.getContext("2d");
-const { readHeading, consumeDash, readPointer } = createInput(canvas);
+const input = createInput(canvas);
+const { readHeading, consumeDash, readPointer } = input;
 let profile = loadProfile();
 let stopPuddleBg = null;
 let stopFishPreview = null;
+
+// Set up once, not per-run: the joystick/dash-button DOM is static, only its
+// container's [hidden] toggles (in play() below) based on whether this is a
+// touch device. isTouchDevice() is checked once here rather than per-frame
+// since a device doesn't gain/lose a touchscreen mid-session.
+if (isTouchDevice()) {
+  setupTouchControls({
+    zone: $("joystick-zone"),
+    thumb: $("joystick-thumb"),
+    dashBtn: $("dash-btn"),
+    setTouchHeading: input.setTouchHeading,
+    requestDash: input.requestDash,
+  });
+}
 
 // Backing store sized at device pixel density (not just CSS pixels), then
 // scaled back down via the context transform: without this, a canvas stretched
@@ -56,9 +72,14 @@ function play({ username, colour, wornHat }) {
   resize();
   resetZoom();
   resetLiveboard();
-  $("dash-bar").hidden = true;
-  $("dash-hint").hidden = true;
-  let dashBarShown = false;
+  $("touch-controls").hidden = !isTouchDevice();
+  // The bar itself is always visible for the whole run (so cooldown stays
+  // legible even before a first dash); only the "click or space to dash"
+  // hint above it hides once dashHappened flips true, which happens once per
+  // run and never resets back.
+  $("dash-hint").hidden = false;
+  $("dash-fill").style.width = "0%";
+  let dashHappened = false;
   const dashCooldown = DASH_DURATION + DASH_PENALTY_DURATION;
   let youId = null;
   let lastYou = null; // most recent known "you" snapshot, for the give-up stats (the server sends no death message for a voluntary quit)
@@ -108,9 +129,9 @@ function play({ username, colour, wornHat }) {
     elapsed += dt;
     const [hx, hy] = readHeading();
     const dash = consumeDash();
-    if (dash && !dashBarShown) {
-      dashBarShown = true;
-      $("dash-bar").hidden = false;
+    if (dash && !dashHappened) {
+      dashHappened = true;
+      $("dash-hint").hidden = true;
     }
     net.sendInput([hx, hy], dash);
 
@@ -119,17 +140,14 @@ function play({ username, colour, wornHat }) {
     if (view?.you) {
       lastYou = view.you;
       updateLiveboard({ players: [view.you, ...view.players], bots: view.bots }, youId, dt);
-      if (dashBarShown) {
-        const { dashTimer, dashPenaltyTimer } = view.you;
-        // dashTimer (the burst) and dashPenaltyTimer (the slowdown after) run
-        // one after the other, not together: while still bursting, the full
-        // penalty is still ahead, so remaining time-to-ready is dashTimer plus
-        // the whole penalty duration, not just whichever timer is non-zero.
-        const remaining = dashTimer > 0 ? dashTimer + DASH_PENALTY_DURATION : dashPenaltyTimer;
-        const ready = remaining <= 0;
-        $("dash-fill").style.width = `${ready ? 100 : Math.max(0, (1 - remaining / dashCooldown) * 100)}%`;
-        $("dash-hint").hidden = !ready;
-      }
+      const { dashTimer, dashPenaltyTimer } = view.you;
+      // dashTimer (the burst) and dashPenaltyTimer (the slowdown after) run
+      // one after the other, not together: while still bursting, the full
+      // penalty is still ahead, so remaining time-to-ready is dashTimer plus
+      // the whole penalty duration, not just whichever timer is non-zero.
+      const remaining = dashTimer > 0 ? dashTimer + DASH_PENALTY_DURATION : dashPenaltyTimer;
+      const ready = remaining <= 0;
+      $("dash-fill").style.width = `${ready ? 100 : Math.max(0, (1 - remaining / dashCooldown) * 100)}%`;
       // Pointer from input.js is already screen-relative-to-canvas-centre (see
       // its `move` handler), and render()'s camera keeps `you` pinned at that
       // same screen centre (translate(w/2, h/2), scale(zoom), translate(-you.x,
@@ -165,9 +183,11 @@ function play({ username, colour, wornHat }) {
 
 async function gameOver({ eatenBy, gaveUp, score = 0, size = 0, timeSurvivedSeconds = 0, quests = [] }) {
   const run = { score, size, timeSurvivedSeconds, quests };
+  const prevBestScore = profile.personalBest?.score ?? 0;
   const before = profile.hatsUnlocked;
   profile = recordRun(profile, run);
   const newlyUnlocked = profile.hatsUnlocked.filter((id) => !before.includes(id));
+  const isNewBest = run.score > prevBestScore;
 
   const killerName = eatenBy && (eatenBy.name ?? eatenBy.colour.charAt(0).toUpperCase() + eatenBy.colour.slice(1));
   $("gameover-title").textContent = gaveUp ? "Gave up" : killerName ? `Eaten by ${killerName}` : "Eaten!";
@@ -181,6 +201,13 @@ async function gameOver({ eatenBy, gaveUp, score = 0, size = 0, timeSurvivedSeco
     unlocksEl.hidden = true;
   }
   $("gameover").hidden = false;
+  const fxCanvas = $("gameover-fx");
+  // Gore on an actual death (not a voluntary give-up — nothing ate you), a
+  // confetti burst layered on top whenever the run was "good" (new best
+  // score or a freshly unlocked hat) — both can fire together, death-fx.js's
+  // shared particle loop handles that.
+  if (!gaveUp) playGutsExplosion(fxCanvas);
+  if (isNewBest || newlyUnlocked.length) playConfettiBurst(fxCanvas);
   try {
     await showLeaderboard();
   } catch {

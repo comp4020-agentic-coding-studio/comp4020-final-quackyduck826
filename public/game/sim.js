@@ -32,6 +32,7 @@ const DASH_SIZE_SCALE = 0.3;
 export const DASH_DURATION = 0.3; // seconds the dash burst lasts
 const DASH_PENALTY = 0.75; // speed multiplier during the post-dash slowdown
 export const DASH_PENALTY_DURATION = 1.4; // seconds of slowdown that pays for the dash
+export const INVULN_DURATION = 5; // seconds a freshly-joined player can't be eaten
 
 let nextId = 1;
 const rand = (n) => Math.random() * n;
@@ -108,6 +109,7 @@ export function addPlayer(state, colour) {
   player.score = 0;
   player.maxSize = START_SIZE;
   player.joinedAt = state.elapsed;
+  player.invulnTimer = INVULN_DURATION;
   const threats = () => [...state.players, ...state.bots.filter((b) => b.big)];
   let tries = 0;
   while (tries++ < 20 && threats().some((t) => Math.hypot(t.x - player.x, t.y - player.y) < clearanceFrom(t))) {
@@ -171,6 +173,7 @@ export function respawnBot(state, { colour, big }) {
 }
 
 export const eatingLocked = (entity) => entity.isPlayer && entity.maxSize >= MAX_SIZE;
+export const isInvulnerable = (entity) => entity.isPlayer && entity.invulnTimer > 0;
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
@@ -218,6 +221,7 @@ export function resolveEating(state) {
       if (a === d || dead.has(d)) continue;
       // A locked attacker may only eat other players; bots aren't players.
       if (eatingLocked(a) && !d.isPlayer) continue;
+      if (isInvulnerable(d)) continue;
       if (a.size > d.size * EAT_MARGIN && dist(a, d) < a.size - d.size * 0.3 && bitingWithHead(a, d)) {
         a.size = Math.min(MAX_SIZE, a.size + d.size * 0.4);
         if (a.isPlayer) a.score += d.size * 0.4;
@@ -262,6 +266,7 @@ export function step(state, dt) {
     } else if (e.dashPenaltyTimer > 0) {
       e.dashPenaltyTimer = Math.max(0, e.dashPenaltyTimer - dt);
     }
+    if (e.invulnTimer > 0) e.invulnTimer = Math.max(0, e.invulnTimer - dt);
     if (e.size > SHRINK_SIZE) e.size = Math.max(SHRINK_SIZE, e.size - SHRINK_RATE * dt);
   }
   for (const p of state.players) {

@@ -49,15 +49,23 @@
     <div id="hud"></div>
     <button id="give-up" type="button" title="Give up" aria-label="Give up">✕</button>
     <ol id="liveboard"></ol>
-    <div id="dash-bar" hidden>
-      <div id="dash-fill"></div>
-      <span id="dash-hint" hidden>Space or click to dash</span>
+    <div id="dash-bar">
+      <span id="dash-hint">Click or space to dash</span>
+      <div id="dash-track"><div id="dash-fill"></div></div>
     </div>
     <div id="gameover" hidden>
+      <canvas id="gameover-fx" aria-hidden="true"></canvas>
       <h2 id="gameover-title">Eaten!</h2>
       <p id="gameover-stats"></p>
       <p id="gameover-unlocks" hidden></p>
       <button id="again" type="button">Continue</button>
+    </div>
+    <div id="touch-controls" hidden>
+      <div id="joystick-zone">
+        <div id="joystick-base"></div>
+        <div id="joystick-thumb"></div>
+      </div>
+      <button id="dash-btn" type="button" aria-label="Dash">DASH</button>
     </div>
   </section>
 
